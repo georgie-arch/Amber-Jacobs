@@ -213,6 +213,77 @@ export async function processInstagramActivity(agent: AmberAgent): Promise<void>
   }
 }
 
+// ─── GET RECENT FOLLOWERS ────────────────────────────────────────
+
+export async function getRecentFollowers(limit = 20): Promise<any[]> {
+  if (!ACCESS_TOKEN || !BUSINESS_ACCOUNT_ID) return [];
+
+  try {
+    const response = await axios.get(
+      `${GRAPH_API}/${BUSINESS_ACCOUNT_ID}/followers`,
+      {
+        params: {
+          access_token: ACCESS_TOKEN,
+          fields: 'id,username,name',
+          limit
+        }
+      }
+    );
+    return response.data?.data || [];
+  } catch (error: any) {
+    logger.error('Error fetching followers:', error.response?.data || error.message);
+    return [];
+  }
+}
+
+// ─── SEND WELCOME DMs TO NEW FOLLOWERS ──────────────────────────
+
+export async function sendInstagramWelcomeDMs(agent: AmberAgent): Promise<void> {
+  if (!ACCESS_TOKEN || !BUSINESS_ACCOUNT_ID) {
+    logger.warn('Instagram credentials not configured — skipping welcome DMs');
+    return;
+  }
+
+  logger.info('👋 Checking for new Instagram followers to welcome...');
+  const memory = agent.getMemory();
+  const recentFollowers = await getRecentFollowers(20);
+
+  for (const follower of recentFollowers) {
+    // Skip if already in our system — they've been welcomed before
+    const existingContact = memory.findContact({ instagram_handle: follower.username });
+    if (existingContact) continue;
+
+    logger.info(`✨ New follower to welcome: @${follower.username}`);
+
+    const task = `
+Draft a warm, brief welcome DM for a new Instagram follower.
+Their Instagram username is @${follower.username}.
+Keep it to one or two sentences. Welcome them to the Indvstry Clvb world.
+Be genuine and curious — ask what they're working on or how they found us.
+Do not pitch membership directly. Just open a conversation.
+`;
+
+    const response = await agent.generateResponse(task);
+
+    if (!response.requires_approval) {
+      const sent = await sendInstagramDM(follower.id, response.message);
+      if (sent) {
+        // Save to memory so we don't welcome them again
+        memory.upsertContact({
+          first_name: follower.name?.split(' ')[0] || follower.username,
+          last_name: follower.name?.split(' ').slice(1).join(' ') || undefined,
+          instagram_handle: follower.username,
+          source: 'instagram_follower'
+        });
+        memory.logActivity('instagram_welcome_sent', 'instagram', undefined);
+      }
+    } else {
+      logger.info(`⏳ Welcome DM for @${follower.username} queued for George's approval`);
+      logger.info(`Draft: ${response.message}`);
+    }
+  }
+}
+
 // ─── WEBHOOK HANDLER ─────────────────────────────────────────────
 
 export function setupInstagramWebhook(app: express.Application, agent: AmberAgent): void {

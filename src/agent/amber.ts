@@ -127,13 +127,17 @@ Generate an appropriate reply. Be natural and human. Check their history above.
     const contactId = this.memory.upsertContact(contact);
     this.memory.upsertLead(contactId, 'discovered', 10);
 
+    const linkedInRule = platform === 'linkedin'
+      ? `\nLINKEDIN RULE: Start the message by addressing them by first name (e.g. "Hey ${contact.first_name},"). Do NOT introduce yourself, do NOT sign off with your name, do NOT add "— Amber" or any name tag. Just the message, addressed to them.`
+      : '';
+
     const task = `
 Draft an outreach message for a potential member.
 Platform: ${platform}
 Context about why you're reaching out: ${context}
 
 This is someone you think would be great for Indvstry Clvb. Personalise it based on their profile.
-Don't oversell. Be curious about them. Keep it concise.
+Don't oversell. Be curious about them. Keep it concise.${linkedInRule}
 `;
 
     const response = await this.generateResponse(task, contactId);

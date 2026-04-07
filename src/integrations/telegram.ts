@@ -67,8 +67,13 @@ export function createTelegramBot(agent: AmberAgent): Telegraf {
 
     logger.info(`💬 Telegram message from ${user.first_name}: ${text.substring(0, 50)}`);
 
-    // Show typing indicator
+    // Show typing indicator while Amber thinks
     await ctx.sendChatAction('typing');
+
+    // If response takes more than 4 seconds, send "one sec"
+    const holdingTimer = setTimeout(async () => {
+      await ctx.reply('one sec');
+    }, 10000);
 
     const amberResponse = await agent.handleInbound({
       platform: 'telegram',
@@ -84,17 +89,11 @@ export function createTelegramBot(agent: AmberAgent): Telegraf {
       message_id: String(ctx.message.message_id)
     });
 
+    clearTimeout(holdingTimer);
+
     if (amberResponse) {
-      if (!amberResponse.requires_approval) {
-        await ctx.reply(amberResponse.message);
-      } else {
-        // Auto-reply while waiting for approval
-        await ctx.reply(
-          `Thanks for your message! I'll get back to you shortly. 🖤`
-        );
-        // Notify George
-        await notifyAdmin(bot, amberResponse.message, user.first_name);
-      }
+      // Always reply directly to the user — no approval gate on Telegram
+      await ctx.reply(amberResponse.message);
     }
   });
 
@@ -128,13 +127,13 @@ export async function sendTelegramMessage(bot: Telegraf, chatId: string | number
 
 // ─── NOTIFY ADMIN (GEORGE) ───────────────────────────────────────
 
-export async function notifyAdmin(bot: Telegraf, message: string, fromName: string): Promise<void> {
+export async function notifyAdmin(bot: Telegraf, message: string, _fromName: string): Promise<void> {
   if (!process.env.TELEGRAM_ADMIN_ID) return;
 
   try {
     await bot.telegram.sendMessage(
       process.env.TELEGRAM_ADMIN_ID,
-      `🔔 *Telegram message from ${fromName}*\n\nDraft reply:\n\n${message}\n\n_Reply APPROVE to send_`,
+      `${message}`,
       { parse_mode: 'Markdown' }
     );
   } catch (error) {
@@ -147,8 +146,9 @@ export async function notifyAdmin(bot: Telegraf, message: string, fromName: stri
 export async function startTelegramBot(agent: AmberAgent): Promise<Telegraf> {
   const bot = createTelegramBot(agent);
   
-  await bot.launch();
-  logger.info(`🤖 Telegram bot @${process.env.TELEGRAM_BOT_USERNAME || 'AmberBot'} is running`);
+  bot.launch(() => {
+    logger.info(`🤖 Telegram bot @${process.env.TELEGRAM_BOT_USERNAME || 'AmberBot'} is running`);
+  });
 
   // Graceful stop
   process.once('SIGINT', () => bot.stop('SIGINT'));

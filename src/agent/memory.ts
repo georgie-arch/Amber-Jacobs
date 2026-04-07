@@ -67,19 +67,31 @@ export class AmberMemory {
           notes = COALESCE(@notes, notes),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${existing.id}
-      `).run(contact);
+      `).run({
+        // Null defaults required so better-sqlite3 named params are all satisfied
+        last_name: null, email: null, phone: null, linkedin_url: null,
+        instagram_handle: null, telegram_id: null, whatsapp_number: null,
+        company: null, job_title: null, industry: null, location: null,
+        bio: null, notes: null,
+        ...contact
+      });
       return existing.id!;
     } else {
       const result = this.db.prepare(`
-        INSERT INTO contacts (first_name, last_name, email, phone, linkedin_url, 
+        INSERT INTO contacts (first_name, last_name, email, phone, linkedin_url,
           instagram_handle, telegram_id, whatsapp_number, company, job_title,
           industry, location, bio, contact_type, status, lead_score, source, notes)
         VALUES (@first_name, @last_name, @email, @phone, @linkedin_url,
           @instagram_handle, @telegram_id, @whatsapp_number, @company, @job_title,
           @industry, @location, @bio, @contact_type, @status, @lead_score, @source, @notes)
-      `).run({ 
-        contact_type: 'lead', status: 'cold', lead_score: 0,
-        ...contact 
+      `).run({
+        // Provide null defaults for every optional field so better-sqlite3 named params are satisfied
+        last_name: null, email: null, phone: null, linkedin_url: null,
+        instagram_handle: null, telegram_id: null, whatsapp_number: null,
+        company: null, job_title: null, industry: null, location: null,
+        bio: null, contact_type: 'lead', status: 'cold', lead_score: 0,
+        source: null, notes: null,
+        ...contact
       });
       return result.lastInsertRowid as number;
     }
@@ -119,7 +131,7 @@ export class AmberMemory {
 
   logConversation(entry: ConversationEntry): number {
     const result = this.db.prepare(`
-      INSERT INTO conversations (contact_id, platform, direction, message_type, 
+      INSERT INTO conversations (contact_id, platform, direction, message_type,
         subject, content, thread_id, message_id, needs_reply, metadata, sent_at)
       VALUES (@contact_id, @platform, @direction, @message_type,
         @subject, @content, @thread_id, @message_id, @needs_reply, @metadata, CURRENT_TIMESTAMP)
@@ -128,8 +140,9 @@ export class AmberMemory {
       subject: null,
       thread_id: null,
       message_id: null,
-      needs_reply: entry.direction === 'inbound' ? 1 : 0,
       ...entry,
+      // Override after spread: coerce boolean → SQLite integer, ensure no undefined values
+      needs_reply: entry.needs_reply ? 1 : (entry.direction === 'inbound' ? 1 : 0),
       metadata: entry.metadata ? JSON.stringify(entry.metadata) : null
     });
     return result.lastInsertRowid as number;
@@ -215,12 +228,14 @@ ${contact.notes ? `- Notes: ${contact.notes}` : ''}`;
 
   // ─── FOLLOW-UP MANAGEMENT ───────────────────────────────────────
 
-  scheduleFollowUp(contactId: number, platform: string, taskType: string, 
+  scheduleFollowUp(contactId: number, platform: string, taskType: string,
     draftMessage: string, scheduledFor: Date, subject?: string): number {
+    // Store in SQLite datetime format (space separator, no Z) so datetime('now') comparisons work
+    const sqliteDate = scheduledFor.toISOString().replace('T', ' ').slice(0, 19);
     const result = this.db.prepare(`
       INSERT INTO followups (contact_id, platform, task_type, subject, draft_message, scheduled_for)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(contactId, platform, taskType, subject || null, draftMessage, scheduledFor.toISOString());
+    `).run(contactId, platform, taskType, subject || null, draftMessage, sqliteDate);
     return result.lastInsertRowid as number;
   }
 

@@ -18,3 +18,32 @@ node_modules/
 
 # OS
 .DS_Store
+
+# Lambda build artifacts
+lambda-dist/
+lambda-dist-instagram/
+lambda-package.zip
+lambda-package-instagram.zip
+
+# Binary installers
+*.pkg
+
+# Claude Code project settings
+.claude/
+
+# MindNode files
+*.mindnode/
+
+# Loose root-level duplicate files
+/amber.ts
+/email.ts
+/index.ts
+/instagram.ts
+/linkedin.ts
+/member-manager.ts
+/memory.ts
+/migrations.ts
+/personality.ts
+/scheduler.ts
+/telegram.ts
+/whatsapp.ts

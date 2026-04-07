@@ -5,15 +5,34 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "ts-node src/index.ts",
-    "start:email": "ts-node src/index.ts --service=email",
-    "start:telegram": "ts-node src/index.ts --service=telegram",
-    "start:whatsapp": "ts-node src/index.ts --service=whatsapp",
-    "start:instagram": "ts-node src/index.ts --service=instagram",
+    "start": "node dist/index.js",
+    "start:dev": "ts-node src/index.ts",
+    "start:email": "node dist/index.js --service=email",
+    "start:telegram": "node dist/index.js --service=telegram",
+    "start:whatsapp": "node dist/index.js --service=whatsapp",
+    "start:instagram": "node dist/index.js --service=instagram",
     "db:setup": "ts-node src/database/migrations.ts",
     "tasks:run": "ts-node src/tools/scheduler.ts --run-now",
     "memory:view": "ts-node src/utils/memory-viewer.ts",
-    "dev": "nodemon --exec 'ts-node src/index.ts'"
+    "dev": "nodemon --exec 'ts-node src/index.ts'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:email": "ts-node src/tests/smoke-test.ts",
+    "linkedin:auth": "ts-node src/scripts/linkedin-auth.ts",
+    "cannes:outreach": "ts-node src/scripts/cannes-outreach.ts",
+    "linkedin:message": "ts-node src/scripts/send-linkedin-message.ts",
+    "powerhouse:outreach": "ts-node src/scripts/powerhouse-outreach.ts",
+    "lambda:deploy": "bash scripts/deploy-lambda.sh",
+    "lambda:logs": "aws logs tail /aws/lambda/amber-whatsapp --follow --region eu-west-2",
+    "lambda:test": "ts-node src/lambda/whatsapp-handler.ts",
+    "lambda:deploy:instagram": "bash scripts/deploy-lambda-instagram.sh",
+    "lambda:logs:instagram": "aws logs tail /aws/lambda/amber-instagram --follow --region eu-west-2",
+    "lambda:test:instagram": "ts-node src/lambda/instagram-handler.ts",
+    "events:sync": "ts-node --project tsconfig.json src/scripts/sync-event-registrations.ts",
+    "events:sync:dry": "ts-node --project tsconfig.json src/scripts/sync-event-registrations.ts --dry-run",
+    "events:register": "ts-node --project tsconfig.json src/tools/event-registrar.ts",
+    "contacts:export": "ts-node --project tsconfig.json src/scripts/export-all-sent-contacts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -37,8 +56,11 @@
     "@types/node": "^20.11.28",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^6.4.14",
+    "@vitest/ui": "^4.1.0",
     "nodemon": "^3.1.0",
+    "playwright": "^1.58.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.2"
+    "typescript": "^5.4.2",
+    "vitest": "^4.1.0"
   }
 }

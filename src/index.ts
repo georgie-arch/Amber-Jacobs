@@ -9,6 +9,8 @@ import { setupInstagramWebhook } from './integrations/instagram';
 import { setupWhatsAppWebhooks } from './integrations/whatsapp';
 import { startTelegramBot } from './integrations/telegram';
 import { logger } from './utils/logger';
+import whatsappConsole from './utils/whatsapp-console';
+import deckRoutes from './decks/deck-routes';
 
 dotenv.config();
 
@@ -47,13 +49,16 @@ Indvstry Clvb
 
     // Health check
     app.get('/health', (req, res) => {
-      res.json({ 
-        status: 'online', 
+      res.json({
+        status: 'online',
         agent: 'Amber Jacobs',
         club: 'Indvstry Clvb',
         timestamp: new Date().toISOString()
       });
     });
+
+    // Root health (Railway ping)
+    app.get('/', (_req, res) => res.send('OK'));
 
     // Instagram webhooks
     if (service === 'all' || service === 'instagram') {
@@ -65,6 +70,12 @@ Indvstry Clvb
       setupWhatsAppWebhooks(app, agent);
     }
 
+    // WhatsApp manual console (George only)
+    app.use('/console', whatsappConsole);
+
+    // Brand-customised Power House decks
+    app.use('/deck', deckRoutes);
+
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
       logger.info(`🌐 Webhook server running on port ${PORT}`);
@@ -72,6 +83,7 @@ Indvstry Clvb
       logger.info(`   Instagram: http://localhost:${PORT}/webhooks/instagram`);
       logger.info(`   WhatsApp (Twilio): http://localhost:${PORT}/webhooks/whatsapp/twilio`);
       logger.info(`   WhatsApp (Meta): http://localhost:${PORT}/webhooks/whatsapp/meta`);
+      logger.info(`   Console: http://localhost:${PORT}/console`);
     });
   }
 

@@ -15,12 +15,21 @@ dotenv.config();
 // ─────────────────────────────────────────────────────────────────
 
 // ─── OPTION A: TWILIO ────────────────────────────────────────────
+// Client is created lazily to avoid crashing on import when credentials are absent/invalid
 
-const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
-  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-  : null;
+function getTwilioClient() {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!sid || !token || !sid.startsWith('AC')) return null;
+  try {
+    return twilio(sid, token);
+  } catch {
+    return null;
+  }
+}
 
 export async function sendWhatsAppViaTwilio(to: string, message: string): Promise<boolean> {
+  const twilioClient = getTwilioClient();
   if (!twilioClient) {
     logger.warn('Twilio not configured');
     return false;
@@ -136,8 +145,8 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
     }
   });
 
-  // ── Meta WhatsApp webhook verification ──
-  app.get('/webhooks/whatsapp/meta', (req, res) => {
+  // ── Meta WhatsApp webhook verification (both paths for compatibility) ──
+  const metaVerifyHandler = (req: express.Request, res: express.Response) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -148,10 +157,12 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
     } else {
       res.sendStatus(403);
     }
-  });
+  };
+  app.get('/webhooks/whatsapp/meta', metaVerifyHandler);
+  app.get('/webhook', metaVerifyHandler); // alias registered in Meta dashboard
 
   // ── Meta WhatsApp events ──
-  app.post('/webhooks/whatsapp/meta', async (req, res) => {
+  const metaEventHandler = async (req: express.Request, res: express.Response) => {
     res.sendStatus(200); // Always respond immediately
 
     const body = req.body;
@@ -191,7 +202,9 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
         }
       }
     }
-  });
+  };
+  app.post('/webhooks/whatsapp/meta', metaEventHandler);
+  app.post('/webhook', metaEventHandler); // alias registered in Meta dashboard
 
   logger.info('✅ WhatsApp webhook routes registered');
 }
@@ -217,6 +230,169 @@ export async function sendWhatsAppBroadcast(
 
   logger.info(`📊 Broadcast complete: ${sent} sent, ${failed} failed`);
   return { sent, failed };
+}
+
+// ─── PROCESS WHATSAPP LEADS ──────────────────────────────────────
+// Runs pending WhatsApp follow-ups from the follow-up queue
+
+export async function processWhatsAppLeads(agent: AmberAgent): Promise<void> {
+  logger.info('📱 Processing WhatsApp leads...');
+  const memory = agent.getMemory();
+
+  const whatsappFollowUps = memory.getPendingFollowUps().filter(f => f.platform === 'whatsapp');
+
+  if (whatsappFollowUps.length === 0) {
+    logger.info('📬 No pending WhatsApp follow-ups');
+    return;
+  }
+
+  for (const followUp of whatsappFollowUps) {
+    const contact = memory.getContactById(followUp.contact_id);
+    if (!contact?.whatsapp_number && !contact?.phone) {
+      logger.warn(`No WhatsApp number for contact ${followUp.contact_id}, skipping`);
+      continue;
+    }
+
+    const number = contact.whatsapp_number || contact.phone!;
+    logger.info(`📱 WhatsApp follow-up for ${followUp.first_name}`);
+
+    const task = `
+Generate a follow-up WhatsApp message.
+Task type: ${followUp.task_type}
+Note: ${followUp.draft_message}
+
+Keep it short and conversational — this is WhatsApp, not email. Check their history above.
+`;
+
+    const response = await agent.generateResponse(task, followUp.contact_id);
+
+    if (!response.requires_approval) {
+      const sent = await sendWhatsApp(number, response.message);
+      if (sent) {
+        memory.markFollowUpComplete(followUp.id);
+        memory.logActivity('whatsapp_followup_sent', 'whatsapp', followUp.contact_id);
+      }
+    } else {
+      logger.info(`⏳ WhatsApp follow-up for ${followUp.first_name} queued for George's approval`);
+      logger.info(`Draft: ${response.message.substring(0, 120)}`);
+    }
+  }
+}
+
+// ─── MANAGE GROUP CHAT ───────────────────────────────────────────
+// Monitors a WhatsApp group and responds to questions/mentions of Amber or Indvstry Clvb
+
+export async function manageGroupChat(agent: AmberAgent, groupId?: string): Promise<void> {
+  const targetGroup = groupId || process.env.WHATSAPP_GROUP_ID;
+
+  if (!targetGroup) {
+    logger.warn('WHATSAPP_GROUP_ID not set — group chat management disabled');
+    return;
+  }
+
+  if (!process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN) {
+    logger.warn('Meta WhatsApp API not configured — group chat disabled');
+    return;
+  }
+
+  logger.info(`💬 Managing WhatsApp group: ${targetGroup}`);
+
+  try {
+    // Fetch recent messages in the group via Meta Cloud API
+    const response = await axios.get(
+      `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        params: { group_id: targetGroup, limit: 20 },
+        headers: { 'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}` }
+      }
+    );
+
+    const messages: any[] = response.data?.data || [];
+    const memory = agent.getMemory();
+
+    for (const msg of messages) {
+      if (msg.type !== 'text') continue;
+      const body: string = msg.text?.body || '';
+
+      // Only respond to questions or direct mentions
+      const isMentioned =
+        body.toLowerCase().includes('amber') ||
+        body.toLowerCase().includes('indvstry') ||
+        body.trim().endsWith('?');
+
+      if (!isMentioned) continue;
+
+      // Deduplicate — store a flag in the contact record so we don't reply twice
+      const dedupKey = `group_msg_${msg.id}`;
+      if (memory.findContact({ whatsapp_number: dedupKey })) continue;
+
+      const senderName: string = msg.from?.name || msg.from || 'a member';
+      logger.info(`💬 Group mention from ${senderName}: ${body.substring(0, 60)}`);
+
+      const amberResponse = await agent.handleInbound({
+        platform: 'whatsapp',
+        from: {
+          first_name: senderName.split(' ')[0],
+          whatsapp_number: typeof msg.from === 'string' ? msg.from : msg.from?.wa_id || 'unknown',
+          source: 'whatsapp_group'
+        },
+        content: body,
+        message_type: 'group',
+        thread_id: targetGroup,
+        message_id: msg.id
+      });
+
+      if (amberResponse && !amberResponse.requires_approval) {
+        await sendWhatsAppViaMeta(targetGroup, amberResponse.message);
+        // Mark as handled by logging a dummy contact with the dedup key
+        memory.upsertContact({ first_name: 'group_dedup', whatsapp_number: dedupKey, source: 'system' });
+      }
+    }
+  } catch (error: any) {
+    logger.error('Group chat management error:', error.response?.data || error.message);
+  }
+}
+
+// ─── PROACTIVE WHATSAPP OUTREACH ─────────────────────────────────
+// Sends WhatsApp messages to leads scheduled for 'outreach' tasks
+
+export async function sendProactiveWhatsAppOutreach(agent: AmberAgent): Promise<void> {
+  logger.info('📤 Running proactive WhatsApp outreach...');
+  const memory = agent.getMemory();
+
+  const outreachItems = memory.getPendingFollowUps().filter(
+    f => f.platform === 'whatsapp' && f.task_type === 'outreach'
+  );
+
+  if (outreachItems.length === 0) {
+    logger.info('📬 No WhatsApp outreach scheduled');
+    return;
+  }
+
+  for (const item of outreachItems) {
+    const contact = memory.getContactById(item.contact_id);
+    if (!contact?.whatsapp_number && !contact?.phone) continue;
+
+    const number = contact.whatsapp_number || contact.phone!;
+    logger.info(`📤 WhatsApp outreach to ${item.first_name}`);
+
+    const response = await agent.draftOutreach(
+      contact,
+      item.draft_message,
+      'whatsapp'
+    );
+
+    if (!response.requires_approval) {
+      const sent = await sendWhatsApp(number, response.message);
+      if (sent) {
+        memory.markFollowUpComplete(item.id);
+        memory.logActivity('whatsapp_outreach_sent', 'whatsapp', item.contact_id);
+      }
+    } else {
+      logger.info(`⏳ WhatsApp outreach for ${item.first_name} queued for George's approval`);
+      logger.info(`Draft: ${response.message.substring(0, 120)}`);
+    }
+  }
 }
 
 // ─── HELPERS ────────────────────────────────────────────────────
