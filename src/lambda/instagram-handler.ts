@@ -129,6 +129,29 @@ async function processMessage(message: any, senderName: string): Promise<string>
   }
 }
 
+// ─── KEYWORD TRIGGERS ────────────────────────────────────────────
+// When someone comments a trigger word, Amber DMs them automatically.
+
+const KEYWORD_TRIGGERS: Record<string, string> = {
+  CANNES: `Hey! Thanks for the comment. Here's everything about Indvstry Power House at Cannes Lions 2026 — our private villa activation bringing together the most senior creative and marketing leaders for the week. All the details are here: https://powerhouse.indvstryclvb.com — Amber x`,
+};
+
+async function handleCommentKeyword(
+  commentText: string,
+  commenterIgId: string,
+  commenterName: string
+): Promise<boolean> {
+  const upper = commentText.trim().toUpperCase();
+  for (const [keyword, dmMessage] of Object.entries(KEYWORD_TRIGGERS)) {
+    if (upper.includes(keyword)) {
+      console.log(`Keyword "${keyword}" detected from ${commenterName} — sending DM`);
+      await sendDM(commenterIgId, dmMessage);
+      return true;
+    }
+  }
+  return false;
+}
+
 // ─── LAMBDA HANDLER ───────────────────────────────────────────────
 
 export const handler = async (event: any): Promise<any> => {
@@ -166,6 +189,27 @@ export const handler = async (event: any): Promise<any> => {
     }
 
     for (const entry of body?.entry || []) {
+
+      // ─── COMMENT KEYWORD TRIGGER ──────────────────────────────
+      for (const change of entry?.changes || []) {
+        if (change.field === 'comments') {
+          const commentData = change.value;
+          const commentText: string = commentData?.text || '';
+          const commenterId: string = commentData?.from?.id || '';
+          const commenterName: string = commentData?.from?.name || 'there';
+
+          // Skip our own comments
+          if (commenterId === BUSINESS_ACCOUNT_ID) continue;
+
+          try {
+            await handleCommentKeyword(commentText, commenterId, commenterName);
+          } catch (err: any) {
+            console.error('Keyword DM failed:', err.message);
+          }
+        }
+      }
+
+      // ─── DIRECT MESSAGES ──────────────────────────────────────
       for (const messagingEvent of entry?.messaging || []) {
         const senderId: string = messagingEvent.sender?.id;
         const message = messagingEvent.message;
