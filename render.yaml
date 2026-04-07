@@ -1,0 +1,126 @@
+services:
+  - type: web
+    name: amber-jacobs
+    runtime: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npm run build && cp src/database/schema.sql dist/database/schema.sql
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CLAUDE_MODEL
+        value: claude-sonnet-4-6
+      - key: AMBER_NAME
+        value: Amber Jacobs
+      - key: AMBER_EMAIL
+        value: access@indvstryclvb.com
+      - key: AMBER_TITLE
+        value: Community Manager
+      - key: AUTO_SEND
+        value: "false"
+      - key: FOUNDER_EMAIL
+        value: george@indvstryclvb.com
+      - key: FOUNDER_PHONE
+        value: "+447438932403"
+      - key: EMAIL_PROVIDER
+        value: outlook
+      - key: EMAIL_USER
+        value: access@indvstryclvb.com
+      - key: OUTLOOK_TENANT_ID
+        sync: false
+      - key: OUTLOOK_CLIENT_ID
+        sync: false
+      - key: OUTLOOK_CLIENT_SECRET
+        sync: false
+      - key: OUTLOOK_REFRESH_TOKEN
+        sync: false
+      - key: APIFY_API_KEY
+        sync: false
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: RAPIDAPI_HOST
+        value: linkedin-data-api.p.rapidapi.com
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_ACCESS_TOKEN
+        sync: false
+      - key: LINKEDIN_LI_AT_COOKIE
+        sync: false
+      - key: LINKEDIN_CSRF_TOKEN
+        sync: false
+      - key: LINKEDIN_FULL_COOKIE_STRING
+        sync: false
+      - key: LINKEDIN_PROFILE_URL
+        value: https://uk.linkedin.com/in/george-guise-0377961a9
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: INSTAGRAM_ACCESS_TOKEN
+        sync: false
+      - key: INSTAGRAM_BUSINESS_ACCOUNT_ID
+        sync: false
+      - key: INSTAGRAM_WEBHOOK_VERIFY_TOKEN
+        value: amber_indvstryclvb_webhook_2024
+      - key: AMBER_IG_USERNAME
+        value: indvstryclvb
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
+        value: amber_whatsapp_webhook_2024
+      - key: META_WHATSAPP_BUSINESS_ID
+        sync: false
+      - key: AMBER_WHATSAPP_NUMBER
+        value: "+447438932403"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        value: amber
+      - key: TELEGRAM_ADMIN_ID
+        value: "6159572238"
+      - key: DB_PATH
+        value: ./amber_memory.db
+      - key: PORT
+        value: "3000"
+      - key: CLUB_NAME
+        value: Indvstry Clvb
+      - key: CLUB_WEBSITE
+        value: https://indvstryclvb.com
+      - key: CLUB_APPLICATION_URL
+        value: https://indvstryclvb.com/apply
+      - key: MEMBERSHIP_PRICE_MONTHLY
+        value: "£15.90/month"
+      - key: MEMBERSHIP_PRICE_6MONTH
+        value: "£104.81/6 months"
+      - key: MEMBERSHIP_PRICE_ANNUAL
+        value: "£157.02/year"
+      - key: MEMBERSHIP_ELITE_MONTHLY
+        value: "£249.99/month"
+      - key: MEMBERSHIP_ELITE_3MONTH
+        value: "£607.29/3 months"
+      - key: LEAD_FOLLOWUP_DAYS
+        value: "3"
+      - key: MEMBER_CHECKIN_DAYS
+        value: "7"
+      - key: HUNTER_API_KEY
+        sync: false
+      - key: APOLLO_API_KEY
+        sync: false
+      - key: INTELBASE_API_KEY
+        sync: false
+      - key: SNOV_CLIENT_ID
+        sync: false
+      - key: SNOV_CLIENT_SECRET
+        sync: false
+      - key: CONSOLE_PASSWORD
+        value: indvstry2024
+      - key: DECK_BASE_URL
+        sync: false
