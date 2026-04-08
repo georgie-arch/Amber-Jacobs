@@ -47,6 +47,9 @@ Indvstry Clvb
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: true }));
 
+    // Log all incoming requests — visible in Render logs
+    app.use((req, res, next) => { console.log(`[REQUEST] ${req.method} ${req.path}`, req.query); next(); });
+
     // Health check
     app.get('/health', (req, res) => {
       res.json({
