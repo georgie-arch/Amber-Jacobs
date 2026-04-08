@@ -325,14 +325,23 @@ Do not pitch membership directly. Just open a conversation.
 export function setupInstagramWebhook(app: express.Application, agent: AmberAgent): void {
   // Webhook verification
   app.get('/webhooks/instagram', (req, res) => {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
+    const mode = String(req.query['hub.mode'] || '');
+    const token = String(req.query['hub.verify_token'] || '');
+    const challenge = String(req.query['hub.challenge'] || '');
+    const expected = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || '';
 
-    if (mode === 'subscribe' && token === process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN) {
+    // Log everything so we can see exactly what's being compared in Render logs
+    console.log('[IG VERIFY] mode:', mode);
+    console.log('[IG VERIFY] token received:', token);
+    console.log('[IG VERIFY] token expected:', expected);
+    console.log('[IG VERIFY] match:', token === expected);
+    console.log('[IG VERIFY] challenge:', challenge);
+
+    if (mode === 'subscribe' && token === expected) {
       logger.info('✅ Instagram webhook verified');
       res.status(200).send(challenge);
     } else {
+      logger.warn(`Instagram webhook verification failed — token mismatch or wrong mode`);
       res.sendStatus(403);
     }
   });
