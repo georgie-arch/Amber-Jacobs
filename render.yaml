@@ -88,8 +88,6 @@ services:
         value: "6159572238"
       - key: DB_PATH
         value: ./amber_memory.db
-      - key: PORT
-        value: "3000"
       - key: CLUB_NAME
         value: Indvstry Clvb
       - key: CLUB_WEBSITE
