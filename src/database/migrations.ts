@@ -14,11 +14,25 @@ export function getDatabase(): Database.Database {
   return db;
 }
 
+function findSchemaPath(): string {
+  // Check multiple locations — handles both compiled (dist/) and source (src/) layouts
+  const candidates = [
+    path.join(__dirname, 'schema.sql'),                          // dist/database/schema.sql (compiled, after cp)
+    path.join(__dirname, '..', '..', 'src', 'database', 'schema.sql'), // fallback to source tree
+    path.join(process.cwd(), 'src', 'database', 'schema.sql'),  // from project root
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  throw new Error(`schema.sql not found. Searched:\n${candidates.join('\n')}`);
+}
+
 export function setupDatabase(): void {
   console.log('🗄️  Setting up Amber\'s memory database...');
-  
+
   const db = getDatabase();
-  const schemaPath = path.join(__dirname, 'schema.sql');
+  const schemaPath = findSchemaPath();
+  console.log('📄 Using schema:', schemaPath);
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   
   db.exec(schema);
