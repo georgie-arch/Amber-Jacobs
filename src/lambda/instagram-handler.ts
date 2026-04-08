@@ -10,7 +10,7 @@ const MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
 const BUSINESS_ACCOUNT_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID!;
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN!;
 const VERIFY_TOKEN = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN!;
-const GRAPH_BASE = 'https://graph.facebook.com/v18.0';
+const GRAPH_BASE = 'https://graph.facebook.com/v21.0';
 
 // ─── AMBER'S SYSTEM PROMPT ───────────────────────────────────────
 
@@ -137,15 +137,29 @@ const KEYWORD_TRIGGERS: Record<string, string> = {
 };
 
 async function handleCommentKeyword(
+  commentId: string,
   commentText: string,
-  commenterIgId: string,
   commenterName: string
 ): Promise<boolean> {
   const upper = commentText.trim().toUpperCase();
   for (const [keyword, dmMessage] of Object.entries(KEYWORD_TRIGGERS)) {
     if (upper.includes(keyword)) {
-      console.log(`Keyword "${keyword}" detected from ${commenterName} — sending DM`);
-      await sendDM(commenterIgId, dmMessage);
+      console.log(`Keyword "${keyword}" detected from ${commenterName} — sending private reply DM`);
+      // Use private_replies endpoint — works for any commenter, no prior DM needed
+      const res = await fetch(`${GRAPH_BASE}/${commentId}/private_replies`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: dmMessage }),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        console.error(`Private reply failed (${res.status}):`, err);
+        return false;
+      }
+      console.log(`Private reply DM sent for keyword "${keyword}"`);
       return true;
     }
   }
@@ -194,17 +208,20 @@ export const handler = async (event: any): Promise<any> => {
       for (const change of entry?.changes || []) {
         if (change.field === 'comments') {
           const commentData = change.value;
+          const commentId: string = commentData?.id || '';
           const commentText: string = commentData?.text || '';
           const commenterId: string = commentData?.from?.id || '';
-          const commenterName: string = commentData?.from?.name || 'there';
+          const commenterName: string = commentData?.from?.name || commentData?.from?.username || 'there';
 
           // Skip our own comments
           if (commenterId === BUSINESS_ACCOUNT_ID) continue;
 
-          try {
-            await handleCommentKeyword(commentText, commenterId, commenterName);
-          } catch (err: any) {
-            console.error('Keyword DM failed:', err.message);
+          if (commentId && commentText) {
+            try {
+              await handleCommentKeyword(commentId, commentText, commenterName);
+            } catch (err: any) {
+              console.error('Keyword DM failed:', err.message);
+            }
           }
         }
       }

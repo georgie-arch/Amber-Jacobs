@@ -6,9 +6,45 @@ import { logger } from '../utils/logger';
 
 dotenv.config();
 
-const GRAPH_API = 'https://graph.facebook.com/v18.0';
+const GRAPH_API = 'https://graph.facebook.com/v21.0';
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
 const BUSINESS_ACCOUNT_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+
+// ─── KEYWORD TRIGGERS ────────────────────────────────────────────
+// When someone comments a trigger word on any post, Amber sends
+// them a private DM reply using Instagram's private_replies endpoint.
+// This works even if the user has never messaged us before.
+
+const KEYWORD_TRIGGERS: Record<string, string> = {
+  CANNES: `Hey! Thanks for the comment. Here's everything about the Indvstry Power House at Cannes Lions 2026 — our private villa activation bringing together the most senior creative and marketing leaders for the week. All the details are here: https://powerhouse.indvstryclvb.com — Amber x`,
+};
+
+async function handleCommentKeyword(
+  commentId: string,
+  commentText: string,
+  commenterName: string
+): Promise<boolean> {
+  const upper = commentText.trim().toUpperCase();
+
+  for (const [keyword, dmMessage] of Object.entries(KEYWORD_TRIGGERS)) {
+    if (upper.includes(keyword)) {
+      logger.info(`🔑 Keyword "${keyword}" detected from ${commenterName} — sending private reply DM`);
+      try {
+        // Use private_replies endpoint — works for any commenter, no prior DM needed
+        await axios.post(
+          `${GRAPH_API}/${commentId}/private_replies`,
+          { message: dmMessage },
+          { params: { access_token: ACCESS_TOKEN } }
+        );
+        logger.info(`✅ Private reply DM sent for keyword "${keyword}"`);
+        return true;
+      } catch (err: any) {
+        logger.error(`Private reply DM failed:`, err.response?.data || err.message);
+      }
+    }
+  }
+  return false;
+}
 
 // ─── GET DMs (Instagram Inbox) ───────────────────────────────────
 
@@ -303,32 +339,97 @@ export function setupInstagramWebhook(app: express.Application, agent: AmberAgen
 
   // Webhook events
   app.post('/webhooks/instagram', async (req, res) => {
-    res.sendStatus(200); // Respond immediately
+    res.sendStatus(200); // Respond immediately to Meta — never let it retry
 
     const body = req.body;
     if (body.object !== 'instagram') return;
 
     for (const entry of body.entry || []) {
+
+      // ─── COMMENT KEYWORD TRIGGERS ─────────────────────────────
+      // Fires when someone comments on any of our posts.
+      // Requires 'comments' field subscribed in Meta webhook settings.
+      for (const change of entry.changes || []) {
+        if (change.field === 'comments') {
+          const commentData = change.value;
+          const commentId: string = commentData?.id || '';
+          const commentText: string = commentData?.text || '';
+          const commenterName: string = commentData?.from?.name || commentData?.from?.username || 'there';
+          const commenterId: string = commentData?.from?.id || '';
+
+          // Skip our own comments
+          if (commenterId === BUSINESS_ACCOUNT_ID) continue;
+
+          if (commentId && commentText) {
+            try {
+              await handleCommentKeyword(commentId, commentText, commenterName);
+            } catch (err: any) {
+              logger.error('Comment keyword handler error:', err.message);
+            }
+          }
+        }
+      }
+
+      // ─── DIRECT MESSAGES (entry.changes[field=messages]) ─────────
       for (const change of entry.changes || []) {
         if (change.field === 'messages') {
           const msg = change.value;
-          
+          const senderId: string = msg?.sender?.id || '';
+          const messageText: string = msg?.message?.text || msg?.message?.attachments?.[0]?.type || '';
+          const messageId: string = msg?.message?.mid || '';
+          const isEcho: boolean = msg?.message?.is_echo || false;
+
+          if (!senderId || isEcho || senderId === BUSINESS_ACCOUNT_ID) continue;
+
+          try {
+            const amberResponse = await agent.handleInbound({
+              platform: 'instagram',
+              from: {
+                first_name: 'there',
+                source: 'instagram_dm'
+              },
+              content: messageText,
+              message_type: 'dm',
+              message_id: messageId
+            });
+
+            if (amberResponse && !amberResponse.requires_approval) {
+              await sendInstagramDM(senderId, amberResponse.message);
+            }
+          } catch (err: any) {
+            logger.error('DM handler error:', err.message);
+          }
+        }
+      }
+
+      // ─── DIRECT MESSAGES (entry.messaging — Messenger-style) ──────
+      for (const messagingEvent of entry?.messaging || []) {
+        const senderId: string = messagingEvent.sender?.id;
+        const message = messagingEvent.message;
+
+        if (!message || message.is_echo || senderId === BUSINESS_ACCOUNT_ID) continue;
+
+        const senderName: string = messagingEvent.sender?.name || 'there';
+        const messageText: string = message.text || '';
+
+        try {
           const amberResponse = await agent.handleInbound({
             platform: 'instagram',
             from: {
-              first_name: msg.contacts?.[0]?.profile?.name?.split(' ')[0] || 'there',
-              instagram_handle: msg.contacts?.[0]?.profile?.name,
+              first_name: senderName.split(' ')[0] || 'there',
               source: 'instagram_dm'
             },
-            content: msg.messages?.[0]?.text?.body || '',
+            content: messageText,
             message_type: 'dm',
-            thread_id: msg.messages?.[0]?.context?.id,
-            message_id: msg.messages?.[0]?.id
+            message_id: message.mid,
+            thread_id: messagingEvent.thread_id
           });
 
           if (amberResponse && !amberResponse.requires_approval) {
-            await sendInstagramDM(msg.sender?.id, amberResponse.message);
+            await sendInstagramDM(senderId, amberResponse.message);
           }
+        } catch (err: any) {
+          logger.error('Messaging event handler error:', err.message);
         }
       }
     }
