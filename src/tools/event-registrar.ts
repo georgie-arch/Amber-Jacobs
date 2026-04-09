@@ -486,6 +486,109 @@ async function handleDropdowns(page: Page, guest: Resident): Promise<void> {
   }
 }
 
+// ─── CONDITIONAL INPUT HANDLER ───────────────────────────────────────────────
+// Runs AFTER radio buttons — catches text/email inputs revealed by radio selections
+// e.g. "If yes, please specify *" fields that only appear once a radio is clicked.
+
+async function fillConditionalInputs(page: Page, guest: Resident): Promise<void> {
+  // Selectors for all standard text/email/tel inputs
+  const knownSelectors = [
+    ...FIELD_SELECTORS.firstName,
+    ...FIELD_SELECTORS.lastName,
+    ...FIELD_SELECTORS.fullName,
+    ...FIELD_SELECTORS.email,
+    ...FIELD_SELECTORS.company,
+    ...FIELD_SELECTORS.jobTitle,
+    ...FIELD_SELECTORS.phone,
+    ...FIELD_SELECTORS.linkedin,
+    ...FIELD_SELECTORS.website,
+  ];
+
+  // Find all visible required text/email/url inputs
+  const inputs = await page.$$('input[type="text"]:visible, input[type="email"]:visible, input[type="url"]:visible, input[type="tel"]:visible');
+
+  for (const input of inputs) {
+    try {
+      if (!(await input.isVisible()) || !(await input.isEnabled())) continue;
+
+      // Skip if already filled
+      const currentValue = await input.inputValue();
+      if (currentValue && currentValue.trim().length > 0) continue;
+
+      // Skip if this is a known structured field (name, email, company, etc.)
+      // that would already have been handled above
+      const isKnownField = await input.evaluate((el: Element, selectors: string[]) => {
+        return selectors.some(sel => {
+          try { return el.matches(sel); } catch { return false; }
+        });
+      }, knownSelectors);
+      if (isKnownField) continue;
+
+      // Determine the label for this input
+      let labelText = '';
+      const id = await input.getAttribute('id');
+      const name = await input.getAttribute('name') || '';
+      const placeholder = await input.getAttribute('placeholder') || '';
+      const ariaLabel = await input.getAttribute('aria-label') || '';
+
+      if (id) {
+        try {
+          const labelEl = await page.$(`label[for="${id}"]`);
+          if (labelEl) labelText = (await labelEl.textContent() || '').trim();
+        } catch { /* ignore */ }
+      }
+      if (!labelText) {
+        labelText = ariaLabel || placeholder;
+      }
+      if (!labelText) {
+        // Check parent container for nearby label/heading
+        labelText = await input.evaluate((_el: Element) => {
+          const parent = _el.closest('div, section, fieldset, li');
+          if (!parent) return '';
+          const label = parent.querySelector('label, legend, h3, h4, h5, p, span');
+          return label ? (label.textContent || '').trim() : '';
+        });
+      }
+      if (!labelText) labelText = name;
+
+      const label = labelText.toLowerCase();
+      const fullName = `${guest.firstName} ${guest.lastName}`.trim();
+
+      // Map label patterns to appropriate answers
+      let answer = '';
+
+      if (/specify|elaborate|detail|describe|explain/i.test(label)) {
+        answer = `${guest.jobTitle} at ${guest.company}. Based in ${guest.location}, attending Cannes Lions 2026 to connect with creative and brand industry leaders.`;
+      } else if (/company|organisation|employer/i.test(label)) {
+        answer = guest.company;
+      } else if (/title|role|position|job/i.test(label)) {
+        answer = guest.jobTitle;
+      } else if (/name/i.test(label)) {
+        answer = fullName;
+      } else if (/city|location|based/i.test(label)) {
+        answer = guest.location;
+      } else if (/how.*hear|referr|source|find out/i.test(label)) {
+        answer = 'Invitation from a colleague in the industry.';
+      } else if (/interest|topic|focus|area/i.test(label)) {
+        answer = 'Brand strategy, creative culture, AI in marketing, diversity in creative industries.';
+      } else if (/diet|food|allergi/i.test(label)) {
+        answer = 'No dietary requirements.';
+      } else if (/access|special|requirement/i.test(label)) {
+        answer = 'No specific requirements.';
+      } else if (/message|comment|anything|note|additional/i.test(label)) {
+        answer = 'Looking forward to connecting with the community at Cannes. Thank you for the invitation.';
+      } else {
+        // Generic fallback — use full name + context
+        answer = `${fullName}, ${guest.jobTitle} at ${guest.company}.`;
+      }
+
+      await input.click({ force: true });
+      await input.fill(answer);
+      console.log(`  [conditional input] "${labelText || name || 'unknown'}": filled`);
+    } catch { /* skip */ }
+  }
+}
+
 // ─── MULTI-STEP NAVIGATION ────────────────────────────────────────────────────
 
 async function isOnFinalPage(page: Page): Promise<boolean> {
@@ -569,11 +672,16 @@ async function fillFormPage(page: Page, guest: Resident): Promise<void> {
   // ── Date/time slots
   await handleDateTimeSlots(page);
 
-  // ── Textareas
-  await fillTextareas(page, guest);
-
-  // ── Radio buttons
+  // ── Radio buttons first — so conditional fields become visible before we sweep
   await handleRadioButtons(page, guest);
+  await page.waitForTimeout(600); // allow conditional fields to animate in
+
+  // ── Conditional text inputs revealed by radio selections
+  // e.g. "If yes, please specify *" fields that appear after clicking "yes"
+  await fillConditionalInputs(page, guest);
+
+  // ── Textareas (after radios so conditional textareas are also caught)
+  await fillTextareas(page, guest);
 
   // ── Checkboxes
   await handleCheckboxes(page, guest);
@@ -659,7 +767,37 @@ async function registerGuest(
         if (!submitted) {
           console.log(`  WARNING: Could not find submit button — pausing 5s for manual review`);
           await page.waitForTimeout(5000);
+          return 'failed';
         }
+
+        // ── Verify confirmation — check for error messages on the page
+        const pageContent = await page.content();
+        const errorPatterns = [
+          /there were some errors/i,
+          /required/i,
+          /please (fill|complete|correct)/i,
+          /invalid/i,
+          /field.*required/i,
+        ];
+        // Check page title / heading for success signal
+        const pageTitle = await page.title();
+        const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 1000));
+
+        const hasError = errorPatterns.some(p => p.test(bodyText));
+        const hasConfirmation = /thank you|you're (all set|registered|confirmed)|registration (confirmed|successful|complete)|we('ve| have) received/i.test(bodyText);
+
+        if (hasError) {
+          console.log(`  ⚠️  Submit error detected on page — registration likely failed`);
+          console.log(`  Page snippet: ${bodyText.slice(0, 300)}`);
+          return 'failed';
+        }
+
+        if (hasConfirmation) {
+          console.log(`  ✅ Confirmation detected: "${pageTitle}"`);
+        } else {
+          console.log(`  ⚠️  No clear confirmation detected — check screenshot`);
+        }
+
         break;
       }
 
