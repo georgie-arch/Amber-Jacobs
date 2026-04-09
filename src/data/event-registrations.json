@@ -214,6 +214,92 @@
           "date": "2026-04-05"
         }
       }
+    },
+    {
+      "eventName": "https://aiandtechsandbox.com/",
+      "eventUrl": "https://aiandtechsandbox.com/",
+      "addedDate": "2026-04-08",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-04-08"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-04-08"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-04-08"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-04-08"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-04-08"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-04-08"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-04-08"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-04-08"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-04-08"
+        }
+      }
+    },
+    {
+      "eventName": "Pinterest Manifestival @ Cannes Lions 2026",
+      "eventUrl": "https://pinterestcannes.com/",
+      "addedDate": "2026-04-09",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-04-09"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-04-09"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-04-09"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-04-09"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-04-09"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-04-09"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-04-09"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-04-09"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-04-09"
+        }
+      }
     }
   ]
 }

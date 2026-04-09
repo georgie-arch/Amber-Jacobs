@@ -31,7 +31,7 @@ export const RESIDENTS: Resident[] = [
   {
     firstName: 'George',
     lastName: 'Guise',
-    email: 'george@indvstryclvb.com',
+    email: 'George@soabparty.com',
     company: 'Indvstry Clvb',
     jobTitle: 'Founder',
     location: 'London, UK',
