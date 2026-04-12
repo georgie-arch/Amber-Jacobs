@@ -4,6 +4,7 @@ import { AmberMemory, Contact } from './memory';
 import { buildContextualPrompt, AMBER_SYSTEM_PROMPT } from './personality';
 import { logger } from '../utils/logger';
 import { executePcToolSafe, isBridgeConnected } from '../integrations/pc-server';
+import { sendEmail } from '../integrations/email';
 
 dotenv.config();
 
@@ -296,6 +297,19 @@ If something fails, tell George clearly what went wrong.
             filename: { type: 'string', description: 'Output path (default: /tmp/amber-screen-<timestamp>.png)' }
           }
         }
+      },
+      {
+        name: 'send_email',
+        description: 'Send an email on George\'s behalf from access@indvstryclvb.com',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            to: { type: 'string', description: 'Recipient email address' },
+            subject: { type: 'string', description: 'Email subject line' },
+            body: { type: 'string', description: 'Email body (plain text)' }
+          },
+          required: ['to', 'subject', 'body']
+        }
       }
     ];
 
@@ -336,7 +350,15 @@ If something fails, tell George clearly what went wrong.
           logger.info(`[George] Tool call: ${toolCall.name}`);
           let result: string;
           try {
-            result = await executePcToolSafe(toolCall.name, toolCall.input as Record<string, any>);
+            if (toolCall.name === 'send_email') {
+              const { to, subject, body } = toolCall.input as { to: string; subject: string; body: string };
+              const ok = await sendEmail(to, subject, body);
+              result = ok
+                ? `Email sent to ${to} — subject: "${subject}"`
+                : `Email failed to send to ${to}. Check credentials.`;
+            } else {
+              result = await executePcToolSafe(toolCall.name, toolCall.input as Record<string, any>);
+            }
           } catch (e: any) {
             result = `Error: ${e.message}`;
             logger.error(`[George] Tool ${toolCall.name} failed:`, e.message);
