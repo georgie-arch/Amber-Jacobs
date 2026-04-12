@@ -105,44 +105,45 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
   
   // ── Twilio webhook ──
   app.post('/webhooks/whatsapp/twilio', async (req, res) => {
-    // Validate Twilio signature in production!
     const from = req.body.From?.replace('whatsapp:', '') || '';
     const body = req.body.Body || '';
     const profileName = req.body.ProfileName || '';
 
     logger.info(`📱 WhatsApp (Twilio) from ${from}: ${body.substring(0, 50)}`);
 
-    const amberResponse = await agent.handleInbound({
-      platform: 'whatsapp',
-      from: {
-        first_name: profileName.split(' ')[0] || 'there',
-        last_name: profileName.split(' ').slice(1).join(' ') || undefined,
-        whatsapp_number: from,
-        phone: from,
-        source: 'whatsapp'
-      },
-      content: body,
-      message_type: 'dm',
-      thread_id: from,
-      message_id: req.body.SmsMessageSid
-    });
+    // Always acknowledge Twilio immediately — avoids 15s webhook timeout
+    // (especially important when PC tools are in use)
+    res.set('Content-Type', 'text/xml');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
 
-    if (amberResponse && !amberResponse.requires_approval) {
-      // Reply via TwiML
-      res.set('Content-Type', 'text/xml');
-      res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Message>${escapeXml(amberResponse.message)}</Message>
-</Response>`);
-    } else {
-      res.set('Content-Type', 'text/xml');
-      res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
-      
-      // Queue for approval
-      if (amberResponse) {
-        logger.info(`⏳ WhatsApp reply queued for approval`);
+    // Process and reply asynchronously via Twilio API
+    setImmediate(async () => {
+      try {
+        const amberResponse = await agent.handleInbound({
+          platform: 'whatsapp',
+          from: {
+            first_name: profileName.split(' ')[0] || 'there',
+            last_name: profileName.split(' ').slice(1).join(' ') || undefined,
+            whatsapp_number: from,
+            phone: from,
+            source: 'whatsapp'
+          },
+          content: body,
+          message_type: 'dm',
+          thread_id: from,
+          message_id: req.body.SmsMessageSid
+        });
+
+        if (amberResponse && !amberResponse.requires_approval) {
+          await sendWhatsAppViaTwilio(from, amberResponse.message);
+          logger.info(`📤 Reply sent to ${from}`);
+        } else if (amberResponse) {
+          logger.info(`⏳ Reply queued for approval`);
+        }
+      } catch (err: any) {
+        logger.error(`❌ Failed to process message from ${from}:`, err.message);
       }
-    }
+    });
   });
 
   // ── Meta WhatsApp webhook verification (both paths for compatibility) ──

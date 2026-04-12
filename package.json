@@ -32,7 +32,9 @@
     "events:sync": "ts-node --project tsconfig.json src/scripts/sync-event-registrations.ts",
     "events:sync:dry": "ts-node --project tsconfig.json src/scripts/sync-event-registrations.ts --dry-run",
     "events:register": "ts-node --project tsconfig.json src/tools/event-registrar.ts",
-    "contacts:export": "ts-node --project tsconfig.json src/scripts/export-all-sent-contacts.ts"
+    "contacts:export": "ts-node --project tsconfig.json src/scripts/export-all-sent-contacts.ts",
+    "bridge": "ts-node src/integrations/pc-bridge.ts",
+    "bridge:start": "node dist/integrations/pc-bridge.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

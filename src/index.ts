@@ -8,6 +8,7 @@ import { startScheduler } from './tools/scheduler';
 import { setupInstagramWebhook } from './integrations/instagram';
 import { setupWhatsAppWebhooks } from './integrations/whatsapp';
 import { startTelegramBot } from './integrations/telegram';
+import { handleBridgePoll, handleBridgeResult, handleBridgeStatus } from './integrations/pc-server';
 import { logger } from './utils/logger';
 import whatsappConsole from './utils/whatsapp-console';
 import deckRoutes from './decks/deck-routes';
@@ -72,6 +73,11 @@ Indvstry Clvb
     if (service === 'all' || service === 'whatsapp') {
       setupWhatsAppWebhooks(app, agent);
     }
+
+    // PC Bridge endpoints (local Mac bridge polls these)
+    app.post('/bridge/poll', handleBridgePoll);
+    app.post('/bridge/result', handleBridgeResult);
+    app.get('/bridge/status', handleBridgeStatus);
 
     // WhatsApp manual console (George only)
     app.use('/console', whatsappConsole);

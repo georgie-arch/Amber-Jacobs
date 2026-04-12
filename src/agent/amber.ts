@@ -1,8 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
 import { AmberMemory, Contact } from './memory';
-import { buildContextualPrompt } from './personality';
+import { buildContextualPrompt, AMBER_SYSTEM_PROMPT } from './personality';
 import { logger } from '../utils/logger';
+import { executePcToolSafe, isBridgeConnected } from '../integrations/pc-server';
 
 dotenv.config();
 
@@ -81,9 +82,14 @@ export class AmberAgent {
   async handleInbound(incoming: IncomingMessage): Promise<AmberResponse | null> {
     logger.info(`📥 Inbound message from ${incoming.from.first_name || 'unknown'} via ${incoming.platform}`);
 
+    const senderPhone = incoming.from.phone || incoming.from.whatsapp_number || '';
+    const georgePhone = (process.env.GEORGE_PHONE || '+447438932403').replace(/\s/g, '');
+    const isGeorge = senderPhone.replace(/\s/g, '') === georgePhone;
+
     // Upsert contact into memory
     const contactId = this.memory.upsertContact({
-      first_name: 'Unknown',
+      first_name: isGeorge ? 'George' : 'Unknown',
+      last_name: isGeorge ? 'Guise' : undefined,
       ...incoming.from,
       source: incoming.from.source || incoming.platform
     });
@@ -102,16 +108,23 @@ export class AmberAgent {
       metadata: incoming.metadata
     });
 
-    // Build task for Amber
-    const task = `
+    let response: AmberResponse;
+
+    if (isGeorge) {
+      // George is talking — switch to personal assistant mode with PC tools
+      response = await this.handleGeorge(incoming.content, contactId);
+    } else {
+      // Regular member / prospect
+      const task = `
 You've received a ${incoming.message_type || 'message'} via ${incoming.platform}.
 Message content: "${incoming.content}"
 ${incoming.subject ? `Subject: ${incoming.subject}` : ''}
 
 Generate an appropriate reply. Be natural and human. Check their history above.
 `;
+      response = await this.generateResponse(task, contactId);
+    }
 
-    const response = await this.generateResponse(task, contactId);
     response.requires_approval = !this.autoSend;
 
     this.memory.logActivity('inbound_handled', incoming.platform, contactId, {
@@ -119,6 +132,236 @@ Generate an appropriate reply. Be natural and human. Check their history above.
     });
 
     return response;
+  }
+
+  // ─── GEORGE MODE: personal assistant + PC tools ──────────────────
+
+  private async handleGeorge(message: string, contactId: number): Promise<AmberResponse> {
+    logger.info(`👑 George mode activated`);
+
+    const bridgeOnline = isBridgeConnected();
+    const pcStatus = bridgeOnline
+      ? 'PC Bridge is ONLINE. You can control George\'s Mac using the pc_* tools.'
+      : 'PC Bridge is OFFLINE. PC tools are unavailable right now (bridge not running on Mac).';
+
+    const systemPrompt = `${AMBER_SYSTEM_PROMPT}
+
+---
+
+## SPECIAL MODE: GEORGE IS MESSAGING YOU
+
+This message is from George Guise — your founder and the person you work for.
+You are NOT community managing right now. You are his personal assistant.
+
+Address him as George. Be warm but efficient. Get things done.
+Do NOT ask him for his name or number — you know who he is.
+Do NOT treat him like a stranger or a member inquiry.
+
+${pcStatus}
+
+When George asks you to do something on his computer, use the PC tools available.
+Always confirm what you did after using tools.
+If something fails, tell George clearly what went wrong.
+`;
+
+    const pcTools: Anthropic.Tool[] = [
+      {
+        name: 'shell',
+        description: 'Run any shell command on George\'s Mac. Use for anything not covered by other tools.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            command: { type: 'string', description: 'The shell command to run' },
+            timeout_ms: { type: 'number', description: 'Timeout in milliseconds (default 30000)' }
+          },
+          required: ['command']
+        }
+      },
+      {
+        name: 'read_file',
+        description: 'Read the contents of a file on George\'s Mac',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            path: { type: 'string', description: 'Absolute or ~ path to the file' }
+          },
+          required: ['path']
+        }
+      },
+      {
+        name: 'write_file',
+        description: 'Write or create a file on George\'s Mac',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            path: { type: 'string', description: 'Absolute or ~ path to the file' },
+            content: { type: 'string', description: 'Content to write' }
+          },
+          required: ['path', 'content']
+        }
+      },
+      {
+        name: 'list_dir',
+        description: 'List files and folders in a directory on George\'s Mac',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            path: { type: 'string', description: 'Directory path (use ~ for home)' }
+          },
+          required: ['path']
+        }
+      },
+      {
+        name: 'find_files',
+        description: 'Search for files by name or content on George\'s Mac',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            name: { type: 'string', description: 'Filename pattern to search for' },
+            content: { type: 'string', description: 'Text to search for inside files' },
+            path: { type: 'string', description: 'Directory to search in (default: home)' }
+          }
+        }
+      },
+      {
+        name: 'open_app',
+        description: 'Open an application on George\'s Mac',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            name: { type: 'string', description: 'Application name (e.g. "Spotify", "Chrome", "Finder")' }
+          },
+          required: ['name']
+        }
+      },
+      {
+        name: 'close_app',
+        description: 'Close/quit an application on George\'s Mac',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            name: { type: 'string', description: 'Application name to quit' }
+          },
+          required: ['name']
+        }
+      },
+      {
+        name: 'get_clipboard',
+        description: 'Get the current clipboard contents from George\'s Mac',
+        input_schema: { type: 'object' as const, properties: {} }
+      },
+      {
+        name: 'set_clipboard',
+        description: 'Set clipboard contents on George\'s Mac',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            text: { type: 'string', description: 'Text to copy to clipboard' }
+          },
+          required: ['text']
+        }
+      },
+      {
+        name: 'get_system_info',
+        description: 'Get CPU, memory, disk, and uptime info from George\'s Mac',
+        input_schema: { type: 'object' as const, properties: {} }
+      },
+      {
+        name: 'get_running_apps',
+        description: 'List all currently running applications on George\'s Mac',
+        input_schema: { type: 'object' as const, properties: {} }
+      },
+      {
+        name: 'get_active_window',
+        description: 'Get the currently active/focused application on George\'s Mac',
+        input_schema: { type: 'object' as const, properties: {} }
+      },
+      {
+        name: 'applescript',
+        description: 'Run an AppleScript command on George\'s Mac for advanced automation',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            script: { type: 'string', description: 'The AppleScript to execute' }
+          },
+          required: ['script']
+        }
+      },
+      {
+        name: 'screenshot',
+        description: 'Take a screenshot and save it to a file on George\'s Mac',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            filename: { type: 'string', description: 'Output path (default: /tmp/amber-screen-<timestamp>.png)' }
+          }
+        }
+      }
+    ];
+
+    const messages: Anthropic.MessageParam[] = [
+      { role: 'user', content: message }
+    ];
+
+    // Tool use loop
+    let finalText = '';
+    const maxIterations = 10;
+
+    for (let i = 0; i < maxIterations; i++) {
+      const response = await anthropic.messages.create({
+        model: MODEL,
+        max_tokens: 2048,
+        system: systemPrompt,
+        tools: bridgeOnline ? pcTools : [],
+        messages
+      });
+
+      // Collect any text from this response turn
+      const textBlocks = response.content.filter(b => b.type === 'text');
+      if (textBlocks.length > 0) {
+        finalText = (textBlocks as Anthropic.TextBlock[]).map(b => b.text).join('\n');
+      }
+
+      if (response.stop_reason === 'end_turn') break;
+
+      if (response.stop_reason === 'tool_use') {
+        const toolUseBlocks = response.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
+
+        // Add assistant message with tool calls
+        messages.push({ role: 'assistant', content: response.content });
+
+        // Execute each tool and collect results
+        const toolResults: Anthropic.ToolResultBlockParam[] = [];
+        for (const toolCall of toolUseBlocks) {
+          logger.info(`[George] Tool call: ${toolCall.name}`);
+          let result: string;
+          try {
+            result = await executePcToolSafe(toolCall.name, toolCall.input as Record<string, any>);
+          } catch (e: any) {
+            result = `Error: ${e.message}`;
+            logger.error(`[George] Tool ${toolCall.name} failed:`, e.message);
+          }
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: toolCall.id,
+            content: result
+          });
+        }
+
+        messages.push({ role: 'user', content: toolResults });
+        continue;
+      }
+
+      break;
+    }
+
+    return {
+      to: 'George',
+      platform: 'whatsapp',
+      message: finalText || "done",
+      tone_notes: 'George mode — personal assistant',
+      requires_approval: false  // always auto-send to George
+    };
   }
 
   // ─── DRAFT OUTREACH ─────────────────────────────────────────────
