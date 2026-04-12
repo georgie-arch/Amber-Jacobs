@@ -83,9 +83,11 @@ export class AmberAgent {
   async handleInbound(incoming: IncomingMessage): Promise<AmberResponse | null> {
     logger.info(`📥 Inbound message from ${incoming.from.first_name || 'unknown'} via ${incoming.platform}`);
 
-    const senderPhone = incoming.from.phone || incoming.from.whatsapp_number || '';
+    const rawPhone = (incoming.from.phone || incoming.from.whatsapp_number || '').replace(/\s/g, '');
+    const senderPhone = rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`;
     const georgePhone = (process.env.GEORGE_PHONE || '+447438932403').replace(/\s/g, '');
-    const isGeorge = senderPhone.replace(/\s/g, '') === georgePhone;
+    const isGeorge = senderPhone === georgePhone;
+    console.log(`📞 From: ${senderPhone} | George: ${georgePhone} | Match: ${isGeorge}`);
 
     // Upsert contact into memory
     const contactId = this.memory.upsertContact({

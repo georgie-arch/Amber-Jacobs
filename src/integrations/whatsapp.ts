@@ -106,7 +106,11 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
   
   // ── Twilio webhook ──
   app.post('/webhooks/whatsapp/twilio', async (req, res) => {
-    const from = req.body.From?.replace('whatsapp:', '') || '';
+    // Twilio sends phone numbers as e.g. "whatsapp:+447438932403"
+    // In form-urlencoded, '+' decodes as space — we must restore it
+    const rawFrom = req.body.From || '';
+    const strippedFrom = rawFrom.replace('whatsapp:', '').replace(/\s/g, '');
+    const from = strippedFrom.startsWith('+') ? strippedFrom : `+${strippedFrom}`;
     const body = req.body.Body || '';
     const profileName = req.body.ProfileName || '';
 
