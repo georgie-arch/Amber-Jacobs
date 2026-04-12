@@ -36,19 +36,20 @@ export async function sendWhatsAppViaTwilio(to: string, message: string): Promis
   }
 
   try {
-    // Format number
+    const raw = process.env.TWILIO_WHATSAPP_NUMBER || '+14155238886';
+    const fromFormatted = raw.startsWith('whatsapp:') ? raw : `whatsapp:${raw}`;
     const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
-    
+
     await twilioClient.messages.create({
-      from: process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886',
+      from: fromFormatted,
       to: toFormatted,
       body: message
     });
 
-    logger.info(`✅ WhatsApp (Twilio) sent to ${to}`);
+    console.log(`✅ WhatsApp sent to ${to}`);
     return true;
-  } catch (error) {
-    logger.error('Twilio WhatsApp failed:', error);
+  } catch (error: any) {
+    console.error(`❌ Twilio send failed to ${to}:`, error?.message || error);
     return false;
   }
 }
@@ -136,12 +137,12 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
 
         if (amberResponse && !amberResponse.requires_approval) {
           await sendWhatsAppViaTwilio(from, amberResponse.message);
-          logger.info(`📤 Reply sent to ${from}`);
+          console.log(`📤 Reply sent to ${from}`);
         } else if (amberResponse) {
-          logger.info(`⏳ Reply queued for approval`);
+          console.log(`⏳ Reply queued for approval`);
         }
       } catch (err: any) {
-        logger.error(`❌ Failed to process message from ${from}:`, err.message);
+        console.error(`❌ Failed to process message from ${from}:`, err?.message || err);
       }
     });
   });

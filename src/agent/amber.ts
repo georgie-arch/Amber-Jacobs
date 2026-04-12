@@ -138,7 +138,7 @@ Generate an appropriate reply. Be natural and human. Check their history above.
   // ─── GEORGE MODE: personal assistant + PC tools ──────────────────
 
   private async handleGeorge(message: string, contactId: number): Promise<AmberResponse> {
-    logger.info(`👑 George mode activated`);
+    console.log(`👑 George mode activated — message: "${message.substring(0, 60)}"`);
 
     const bridgeOnline = isBridgeConnected();
     const pcStatus = bridgeOnline
