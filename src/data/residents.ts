@@ -42,9 +42,9 @@ export const RESIDENTS: Resident[] = [
   {
     firstName: 'Dinalva',
     lastName: 'Tavares',
-    email: 'dinalvys@gmail.com',
+    email: 'contact@missdinalva.com',
     company: 'Indvstry Clvb',
-    jobTitle: 'Brand Partnership Manager',
+    jobTitle: 'Brand Partnerships & Events Manager',
     location: 'London, UK',
     phone: '+44 7700 182341',
     linkedinUrl: 'https://www.linkedin.com/in/dinalva-tavares',
@@ -52,8 +52,8 @@ export const RESIDENTS: Resident[] = [
   {
     firstName: 'Abi',
     lastName: 'Blend',
-    email: 'blendworld@gmail.com',
-    company: 'Indvstry Clvb',
+    email: 'Abi@cr8focus.com',
+    company: 'Cr8 Focus',
     jobTitle: 'New Business Manager',
     location: 'London, UK',
     phone: '+44 7700 193456',
@@ -114,12 +114,23 @@ export const RESIDENTS: Resident[] = [
   {
     firstName: 'Silva',
     lastName: 'Stone',
-    email: 'silvastonemusic@gmail.com',
+    email: 'Me@silvastonemusic.com',
     company: 'White Hut Studios',
-    jobTitle: 'Founder & Creative Director',
+    jobTitle: 'Recording Studio Owner',
     location: 'London, UK',
     phone: '+44 7700 248901',
     linkedinUrl: 'https://www.linkedin.com/in/silva-stone',
+  },
+  {
+    firstName: 'Anthony',
+    lastName: 'Okoro',
+    email: 'aokoro@ebay.com',
+    company: 'eBay',
+    jobTitle: 'Senior Director, Ads New Ventures',
+    location: 'Unknown',
+    phone: '',
+    linkedinUrl: '',
+    website: 'https://www.ebay.com',
   },
 ];
 
