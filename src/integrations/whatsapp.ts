@@ -67,7 +67,7 @@ export async function sendWhatsAppViaMeta(to: string, message: string): Promise<
     const cleanNumber = to.replace(/\D/g, '');
 
     await axios.post(
-      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
       {
         messaging_product: 'whatsapp',
         to: cleanNumber,
