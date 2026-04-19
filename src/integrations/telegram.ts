@@ -65,25 +65,35 @@ export function createTelegramBot(agent: AmberAgent): Telegraf {
     // Skip commands (handled above)
     if (text.startsWith('/')) return;
 
-    logger.info(`💬 Telegram message from ${user.first_name}: ${text.substring(0, 50)}`);
+    const isGeorge = String(user.id) === process.env.TELEGRAM_ADMIN_ID;
+
+    if (isGeorge) {
+      logger.info(`👑 GEORGE command via Telegram: ${text.substring(0, 80)}`);
+    } else {
+      logger.info(`💬 Telegram message from ${user.first_name}: ${text.substring(0, 50)}`);
+    }
 
     // Show typing indicator while Amber thinks
     await ctx.sendChatAction('typing');
 
-    // If response takes more than 4 seconds, send "one sec"
     const holdingTimer = setTimeout(async () => {
       await ctx.reply('one sec');
     }, 10000);
 
+    // George gets command mode — Amber treats his messages as operational instructions
+    const contentWithContext = isGeorge
+      ? `[COMMAND FROM GEORGE — founder. Execute this as an operational task, not a member query]: ${text}`
+      : text;
+
     const amberResponse = await agent.handleInbound({
       platform: 'telegram',
       from: {
-        first_name: user.first_name,
-        last_name: user.last_name,
+        first_name: isGeorge ? 'George' : user.first_name,
+        last_name: isGeorge ? 'Guise' : user.last_name,
         telegram_id: String(user.id),
         source: 'telegram'
       },
-      content: text,
+      content: contentWithContext,
       message_type: 'dm',
       thread_id: String(ctx.chat.id),
       message_id: String(ctx.message.message_id)
@@ -92,7 +102,6 @@ export function createTelegramBot(agent: AmberAgent): Telegraf {
     clearTimeout(holdingTimer);
 
     if (amberResponse) {
-      // Always reply directly to the user — no approval gate on Telegram
       await ctx.reply(amberResponse.message);
     }
   });
