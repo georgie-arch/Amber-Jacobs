@@ -123,6 +123,7 @@ export class AmberAgent {
     if (isGeorge) {
       // George is talking — switch to personal assistant mode with PC tools
       response = await this.handleGeorge(incoming.content, contactId);
+      console.log(`🔁 handleGeorge returned — message: "${response.message.substring(0, 60)}"`);
     } else {
       // Regular member / prospect
       const task = `
@@ -133,13 +134,19 @@ ${incoming.subject ? `Subject: ${incoming.subject}` : ''}
 Generate an appropriate reply. Be natural and human. Check their history above.
 `;
       response = await this.generateResponse(task, contactId);
+      console.log(`🔁 generateResponse returned`);
     }
 
     response.requires_approval = !this.autoSend;
+    console.log(`📋 requires_approval: ${response.requires_approval}`);
 
-    this.memory.logActivity('inbound_handled', incoming.platform, contactId, {
-      message_preview: incoming.content.substring(0, 100)
-    });
+    try {
+      this.memory.logActivity('inbound_handled', incoming.platform, contactId, {
+        message_preview: incoming.content.substring(0, 100)
+      });
+    } catch (memErr: any) {
+      console.error(`⚠️  memory.logActivity failed: ${memErr?.message}`);
+    }
 
     return response;
   }
@@ -400,6 +407,7 @@ When George asks you to do something on his Mac, use the PC tools. Always confir
       break;
     }
 
+    console.log(`🎯 handleGeorge complete — finalText length: ${finalText.length}, message: "${(finalText || 'done').substring(0, 80)}"`);
     return {
       to: 'George',
       platform: 'whatsapp',
