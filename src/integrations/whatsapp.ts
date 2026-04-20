@@ -187,23 +187,35 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
 
           logger.info(`📱 WhatsApp (Meta) from ${name || msg.from}: ${msg.text?.body?.substring(0, 50)}`);
 
-          const amberResponse = await agent.handleInbound({
-            platform: 'whatsapp',
-            from: {
-              first_name: name.split(' ')[0] || 'there',
-              last_name: name.split(' ').slice(1).join(' ') || undefined,
-              whatsapp_number: msg.from,
-              phone: msg.from,
-              source: 'whatsapp'
-            },
-            content: msg.text?.body || '',
-            message_type: 'dm',
-            thread_id: msg.from,
-            message_id: msg.id
-          });
+          try {
+            logger.info(`⚙️  Calling handleInbound for ${msg.from}...`);
+            const amberResponse = await agent.handleInbound({
+              platform: 'whatsapp',
+              from: {
+                first_name: name.split(' ')[0] || 'there',
+                last_name: name.split(' ').slice(1).join(' ') || undefined,
+                whatsapp_number: msg.from,
+                phone: msg.from,
+                source: 'whatsapp'
+              },
+              content: msg.text?.body || '',
+              message_type: 'dm',
+              thread_id: msg.from,
+              message_id: msg.id
+            });
 
-          if (amberResponse && !amberResponse.requires_approval) {
-            await sendWhatsAppViaMeta(msg.from, amberResponse.message);
+            logger.info(`✅ handleInbound returned — requires_approval: ${amberResponse?.requires_approval}, message: ${amberResponse?.message?.substring(0, 60)}`);
+
+            if (amberResponse && !amberResponse.requires_approval) {
+              logger.info(`📤 Sending reply to ${msg.from}...`);
+              const sent = await sendWhatsAppViaMeta(msg.from, amberResponse.message);
+              logger.info(`📤 Send result: ${sent ? 'SUCCESS' : 'FAILED'}`);
+            } else {
+              logger.warn(`⏸️  Reply held — requires_approval: ${amberResponse?.requires_approval}`);
+            }
+          } catch (err: any) {
+            logger.error(`❌ WhatsApp handler error for ${msg.from}: ${err?.message || err}`);
+            logger.error(err?.stack || '');
           }
         }
       }
