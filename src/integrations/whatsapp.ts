@@ -214,8 +214,8 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
               logger.warn(`⏸️  Reply held — requires_approval: ${amberResponse?.requires_approval}`);
             }
           } catch (err: any) {
-            logger.error(`❌ WhatsApp handler error for ${msg.from}: ${err?.message || err}`);
-            logger.error(err?.stack || '');
+            console.error(`❌ WhatsApp handler error for ${msg.from}: ${err?.message || err}`);
+            console.error(err?.stack || '');
           }
         }
       }

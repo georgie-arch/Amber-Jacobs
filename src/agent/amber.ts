@@ -50,11 +50,18 @@ export class AmberAgent {
 
     const prompt = buildContextualPrompt(contactContext, task);
 
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    let apiResponse: Anthropic.Message;
+    try {
+      apiResponse = await anthropic.messages.create({
+        model: MODEL,
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      });
+    } catch (apiErr: any) {
+      console.error(`❌ Claude API error in generateResponse: ${apiErr?.message || apiErr}`);
+      throw apiErr;
+    }
+    const response = apiResponse;
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
     
@@ -327,14 +334,24 @@ When George asks you to do something on his Mac, use the PC tools. Always confir
     let finalText = '';
     const maxIterations = 10;
 
+    console.log(`🧠 Calling Claude API — model: ${MODEL}, bridge: ${bridgeOnline}`);
+
     for (let i = 0; i < maxIterations; i++) {
-      const response = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 2048,
-        system: systemPrompt,
-        tools: bridgeOnline ? pcTools : [],
-        messages
-      });
+      let response: Anthropic.Message;
+      try {
+        response = await anthropic.messages.create({
+          model: MODEL,
+          max_tokens: 2048,
+          system: systemPrompt,
+          tools: bridgeOnline ? pcTools : [],
+          messages
+        });
+      } catch (apiErr: any) {
+        console.error(`❌ Claude API error in handleGeorge: ${apiErr?.message || apiErr}`);
+        console.error(`   Status: ${apiErr?.status}, Type: ${apiErr?.error?.type}`);
+        return { to: 'George', platform: 'whatsapp', message: `Sorry George, I hit an API error: ${apiErr?.message || 'unknown error'}`, tone_notes: 'error', requires_approval: false };
+      }
+      console.log(`✅ Claude API responded — stop_reason: ${response.stop_reason}`);
 
       // Collect any text from this response turn
       const textBlocks = response.content.filter(b => b.type === 'text');
