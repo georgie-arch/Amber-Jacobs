@@ -82,10 +82,10 @@ export async function sendWhatsAppViaMeta(to: string, message: string): Promise<
       }
     );
 
-    logger.info(`✅ WhatsApp (Meta) sent to ${to}`);
+    console.log(`✅ WhatsApp (Meta) sent to ${to}`);
     return true;
   } catch (error: any) {
-    logger.error('Meta WhatsApp failed:', error.response?.data || error.message);
+    console.error(`❌ Meta WhatsApp failed to ${to}:`, JSON.stringify(error.response?.data) || error.message);
     return false;
   }
 }
@@ -185,10 +185,10 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
           const contactInfo = value.contacts?.find((c: any) => c.wa_id === msg.from) || {};
           const name = contactInfo.profile?.name || '';
 
-          logger.info(`📱 WhatsApp (Meta) from ${name || msg.from}: ${msg.text?.body?.substring(0, 50)}`);
+          console.log(`📱 WhatsApp (Meta) from ${name || msg.from}: ${msg.text?.body?.substring(0, 50)}`);
 
           try {
-            logger.info(`⚙️  Calling handleInbound for ${msg.from}...`);
+            console.log(`⚙️  Calling handleInbound for ${msg.from}...`);
             const amberResponse = await agent.handleInbound({
               platform: 'whatsapp',
               from: {
@@ -204,14 +204,14 @@ export function setupWhatsAppWebhooks(app: express.Application, agent: AmberAgen
               message_id: msg.id
             });
 
-            logger.info(`✅ handleInbound returned — requires_approval: ${amberResponse?.requires_approval}, message: ${amberResponse?.message?.substring(0, 60)}`);
+            console.log(`✅ handleInbound returned — requires_approval: ${amberResponse?.requires_approval}, msg: ${amberResponse?.message?.substring(0, 60)}`);
 
             if (amberResponse && !amberResponse.requires_approval) {
-              logger.info(`📤 Sending reply to ${msg.from}...`);
+              console.log(`📤 Sending WhatsApp reply to ${msg.from}...`);
               const sent = await sendWhatsAppViaMeta(msg.from, amberResponse.message);
-              logger.info(`📤 Send result: ${sent ? 'SUCCESS' : 'FAILED'}`);
+              console.log(`📤 Send result: ${sent ? 'SUCCESS' : 'FAILED'}`);
             } else {
-              logger.warn(`⏸️  Reply held — requires_approval: ${amberResponse?.requires_approval}`);
+              console.log(`⏸️  Reply held — requires_approval: ${amberResponse?.requires_approval}`);
             }
           } catch (err: any) {
             console.error(`❌ WhatsApp handler error for ${msg.from}: ${err?.message || err}`);
@@ -318,7 +318,7 @@ export async function manageGroupChat(agent: AmberAgent, groupId?: string): Prom
   try {
     // Fetch recent messages in the group via Meta Cloud API
     const response = await axios.get(
-      `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
         params: { group_id: targetGroup, limit: 20 },
         headers: { 'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}` }
