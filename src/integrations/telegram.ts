@@ -154,12 +154,27 @@ export async function notifyAdmin(bot: Telegraf, message: string, _fromName: str
 
 export async function startTelegramBot(agent: AmberAgent): Promise<Telegraf> {
   const bot = createTelegramBot(agent);
-  
-  bot.launch(() => {
-    logger.info(`🤖 Telegram bot @${process.env.TELEGRAM_BOT_USERNAME || 'AmberBot'} is running`);
+
+  // Catch ALL bot errors — never let Telegram crash the process
+  bot.catch((err: any) => {
+    if (err?.response?.error_code === 409) {
+      logger.warn('⚠️  Telegram 409 conflict — another instance is running. Telegram disabled on this instance.');
+    } else {
+      logger.error('Telegram error:', err?.message || err);
+    }
   });
 
-  // Graceful stop
+  // Launch without awaiting — errors are caught above
+  bot.launch(() => {
+    logger.info(`🤖 Telegram bot @${process.env.TELEGRAM_BOT_USERNAME || 'AmberBot'} is running`);
+  }).catch((err: any) => {
+    if (err?.response?.error_code === 409) {
+      logger.warn('⚠️  Telegram launch failed — 409 conflict. Another instance has the bot. Continuing without Telegram.');
+    } else {
+      logger.error('Telegram launch error:', err?.message || err);
+    }
+  });
+
   process.once('SIGINT', () => bot.stop('SIGINT'));
   process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
