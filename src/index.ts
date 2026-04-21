@@ -11,6 +11,7 @@ import { startTelegramBot } from './integrations/telegram';
 import { handleBridgePoll, handleBridgeResult, handleBridgeStatus } from './integrations/pc-server';
 import { logger } from './utils/logger';
 import whatsappConsole from './utils/whatsapp-console';
+import dashboardRoutes from './utils/dashboard';
 import deckRoutes from './decks/deck-routes';
 
 dotenv.config();
@@ -87,6 +88,9 @@ Indvstry Clvb
 
     // WhatsApp manual console (George only)
     app.use('/console', whatsappConsole);
+
+    // Conversation dashboard (George only)
+    app.use('/dashboard', dashboardRoutes);
 
     // Brand-customised Power House decks
     app.use('/deck', deckRoutes);

@@ -124,6 +124,18 @@ export function startScheduler(agent: AmberAgent): void {
     } catch (err: any) { logger.error('Reply check failed:', err.message); }
   });
 
+  // ─── EVERY TUESDAY 10AM BST (9am UTC): Member self-promo reminder ──
+  cron.schedule('0 9 * * 2', async () => {
+    logger.info('📣 Sending Tuesday self-promo reminder to members...');
+    await sendTuesdaySelfPromoReminder(agent);
+  });
+
+  // ─── EVERY SUNDAY 6PM BST (5pm UTC): Weekly event recap to members ─
+  cron.schedule('0 17 * * 0', async () => {
+    logger.info('📋 Sending Sunday event recap to members...');
+    await sendSundayEventRecap(agent);
+  });
+
   // ─── TUESDAY 24 MAR 2026: POWER HOUSE OUTREACH — 17 BRANDS ──────
   // Staggered by recipient timezone. All land at 10am local time.
   // EU (CET=UTC+1): Ben Skinazi/Equativ, Damian Bradfield/WeTransfer → 09:00 UTC
@@ -584,6 +596,73 @@ const path = require('path');
   logger.info('   🩺 Member health check  10am daily');
   logger.info('   📊 Weekly summary       Monday 8am');
   logger.info('   📨 Sponsor outreach     10am daily (50/day)');
+}
+
+// ─── TUESDAY SELF-PROMO REMINDER ─────────────────────────────────
+
+async function sendTuesdaySelfPromoReminder(agent: AmberAgent): Promise<void> {
+  const memory = agent.getMemory();
+  const allContacts = (memory as any).db.prepare('SELECT * FROM contacts').all() as any[];
+  const members = allContacts.filter((c: any) =>
+    c.whatsapp_number && (c.contact_type === 'member' || c.status === 'active')
+  );
+
+  if (members.length === 0) {
+    logger.info('No WhatsApp members to send Tuesday reminder to');
+    return;
+  }
+
+  const { sendWhatsApp } = await import('../integrations/whatsapp');
+
+  const messages = [
+    "it's Tuesday which means one thing, self promo is OPEN 🎤 tell us what you're working on, what you need help with, or what the community can support. drop it below.",
+    "happy Tuesday. self promo day is here. what are you building, launching or need hands on? the clvb is listening 👂",
+    "Tuesday. self promo unlocked. what's good? what are you working on this week? what do you need from the community?",
+  ];
+  const message = messages[new Date().getDate() % messages.length];
+
+  let sent = 0;
+  for (const member of members) {
+    const success = await sendWhatsApp(member.whatsapp_number!, message);
+    if (success) sent++;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  logger.info(`Tuesday reminder sent to ${sent}/${members.length} members`);
+}
+
+// ─── SUNDAY EVENT RECAP ───────────────────────────────────────────
+
+async function sendSundayEventRecap(agent: AmberAgent): Promise<void> {
+  const memory = agent.getMemory();
+  const allContacts = (memory as any).db.prepare('SELECT * FROM contacts').all() as any[];
+  const members = allContacts.filter((c: any) =>
+    c.whatsapp_number && (c.contact_type === 'member' || c.status === 'active')
+  );
+
+  if (members.length === 0) {
+    logger.info('No WhatsApp members for Sunday recap');
+    return;
+  }
+
+  const recapTask = `
+Generate a Sunday evening recap message for Indvstry Clvb members.
+Keep it short, warm and conversational — this is a WhatsApp message, not an email.
+Cover: events that happened this week that members attended or were posted in the group, any highlights or moments worth celebrating, and a teaser of what's coming next week.
+If you don't have specific event data, keep it general and hype-forward.
+Tone: Amber on a Sunday — relaxed, warm, end-of-week energy.
+Max 3 short paragraphs.
+`;
+
+  const response = await agent.generateResponse(recapTask);
+  const { sendWhatsApp } = await import('../integrations/whatsapp');
+
+  let sent = 0;
+  for (const member of members) {
+    const success = await sendWhatsApp(member.whatsapp_number!, response.message);
+    if (success) sent++;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  logger.info(`Sunday recap sent to ${sent}/${members.length} members`);
 }
 
 // ─── RUN ALL TASKS NOW (manual trigger) ──────────────────────────
