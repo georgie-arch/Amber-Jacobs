@@ -122,6 +122,28 @@ CREATE TABLE IF NOT EXISTS templates (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Team members: Amber dashboard access for George's team
+CREATE TABLE IF NOT EXISTS team_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT DEFAULT 'agent', -- 'admin' | 'agent'
+  password_hash TEXT NOT NULL,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Conversation assignments: which team member is handling a contact
+CREATE TABLE IF NOT EXISTS conversation_assignments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contact_id INTEGER NOT NULL REFERENCES contacts(id),
+  assigned_to INTEGER REFERENCES team_members(id),
+  assigned_by INTEGER REFERENCES team_members(id),
+  note TEXT,
+  assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  resolved_at DATETIME
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(email);
 CREATE INDEX IF NOT EXISTS idx_contacts_status ON contacts(status);

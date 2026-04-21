@@ -32,13 +32,89 @@ export interface IncomingMessage {
   metadata?: object;
 }
 
+const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+interface ConversationSession {
+  contactId: number;
+  lastMessageAt: number;
+  messageCount: number;
+  knownName?: string;
+  knownIndustry?: string;
+  introComplete: boolean; // true once we know their name
+}
+
 export class AmberAgent {
   private memory: AmberMemory;
   private autoSend: boolean;
+  private sessions = new Map<number, ConversationSession>();
 
   constructor() {
     this.memory = new AmberMemory();
     this.autoSend = process.env.AUTO_SEND === 'true';
+    // Clean up expired sessions every 30 minutes
+    setInterval(() => this.purgeSessions(), 30 * 60 * 1000);
+  }
+
+  private purgeSessions(): void {
+    const now = Date.now();
+    for (const [id, s] of this.sessions.entries()) {
+      if (now - s.lastMessageAt > SESSION_TTL_MS) this.sessions.delete(id);
+    }
+  }
+
+  private getSession(contactId: number): ConversationSession | null {
+    const s = this.sessions.get(contactId);
+    if (!s) return null;
+    if (Date.now() - s.lastMessageAt > SESSION_TTL_MS) {
+      this.sessions.delete(contactId);
+      return null;
+    }
+    return s;
+  }
+
+  private touchSession(contactId: number, contact: any): ConversationSession {
+    const existing = this.getSession(contactId);
+    if (existing) {
+      existing.lastMessageAt = Date.now();
+      existing.messageCount += 1;
+      // Update known name if contact record was enriched since last message
+      if (contact?.first_name && contact.first_name !== 'Unknown') {
+        existing.knownName = contact.first_name + (contact.last_name ? ` ${contact.last_name}` : '');
+        existing.introComplete = true;
+      }
+      if (contact?.industry) existing.knownIndustry = contact.industry;
+      return existing;
+    }
+    const isKnown = contact?.first_name && contact.first_name !== 'Unknown';
+    const session: ConversationSession = {
+      contactId,
+      lastMessageAt: Date.now(),
+      messageCount: 1,
+      knownName: isKnown ? contact.first_name + (contact.last_name ? ` ${contact.last_name}` : '') : undefined,
+      knownIndustry: contact?.industry || undefined,
+      introComplete: isKnown,
+    };
+    this.sessions.set(contactId, session);
+    return session;
+  }
+
+  private buildSessionContext(session: ConversationSession): string {
+    const lines: string[] = [];
+    lines.push(`\n## Active Session`);
+    lines.push(`- Message ${session.messageCount} in this session (started within the last hour)`);
+    if (session.knownName) {
+      lines.push(`- You already know their name: ${session.knownName}. Do NOT ask for it again.`);
+    }
+    if (session.knownIndustry) {
+      lines.push(`- Industry already known: ${session.knownIndustry}. Do NOT ask again.`);
+    }
+    if (session.introComplete) {
+      lines.push(`- Intro is complete. Skip any "what's your name?" or "what do you do?" questions entirely.`);
+    }
+    if (session.messageCount > 1) {
+      lines.push(`- This is a continuing conversation. Do NOT repeat back what they just told you. Do NOT re-introduce yourself. Carry on naturally.`);
+    }
+    return lines.join('\n');
   }
 
   // ─── CORE: GENERATE RESPONSE ────────────────────────────────────
@@ -104,6 +180,36 @@ export class AmberAgent {
       source: incoming.from.source || incoming.platform
     });
 
+    // Get or start session for this contact
+    const contactRecord = this.memory.getContactById(contactId);
+    const session = isGeorge ? null : this.touchSession(contactId, contactRecord);
+
+    // If name was unknown but they've told us in a prior message, try to extract it
+    if (session && !session.introComplete) {
+      const recentHistory = this.memory.getContactHistory(contactId, 6);
+      const prevAmberMsg = recentHistory.find(m => m.direction === 'outbound');
+      const prevAskedForName = prevAmberMsg?.content?.toLowerCase().includes("what's your name") ||
+        prevAmberMsg?.content?.toLowerCase().includes('your name') ||
+        prevAmberMsg?.content?.toLowerCase().includes('who are you');
+      if (prevAskedForName && incoming.content.length < 60) {
+        // Short reply after asking for name — likely their name
+        const nameParts = incoming.content.trim().replace(/^(i'm|i am|it's|its|my name is|name is)\s*/i, '').split(' ');
+        const likelyName = nameParts[0];
+        if (likelyName && likelyName.length > 1 && /^[A-Za-z]/.test(likelyName)) {
+          this.memory.upsertContact({
+            first_name: likelyName,
+            last_name: nameParts[1] || undefined,
+            whatsapp_number: incoming.from.whatsapp_number,
+            phone: incoming.from.phone,
+            source: incoming.from.source || incoming.platform
+          });
+          session.knownName = nameParts.slice(0, 2).join(' ').trim();
+          session.introComplete = true;
+          console.log(`📝 Extracted name from reply: ${session.knownName}`);
+        }
+      }
+    }
+
     // Log the inbound message
     this.memory.logConversation({
       contact_id: contactId,
@@ -125,13 +231,18 @@ export class AmberAgent {
       response = await this.handleGeorge(incoming.content, contactId);
       console.log(`🔁 handleGeorge returned — message: "${response.message.substring(0, 60)}"`);
     } else {
+      // Build session context to inject into prompt
+      const sessionCtx = session ? this.buildSessionContext(session) : '';
+
       // Regular member / prospect
       const task = `
 You've received a ${incoming.message_type || 'message'} via ${incoming.platform}.
 Message content: "${incoming.content}"
 ${incoming.subject ? `Subject: ${incoming.subject}` : ''}
+${sessionCtx}
 
 Generate an appropriate reply. Be natural and human. Check their history above.
+IMPORTANT: Do NOT repeat back what the person just said to you. Do NOT mirror their words back at them. Respond with something new and useful.
 `;
       response = await this.generateResponse(task, contactId);
       console.log(`🔁 generateResponse returned`);
