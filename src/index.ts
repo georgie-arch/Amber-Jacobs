@@ -48,8 +48,14 @@ Indvstry Clvb
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: true }));
 
-    // Log all incoming requests — visible in Render logs
-    app.use((req, res, next) => { console.log(`[REQUEST] ${req.method} ${req.path}`, req.query); next(); });
+    // Log all incoming requests — visible in Railway logs
+    app.use((req, res, next) => {
+      console.log(`[REQUEST] ${req.method} ${req.path}`, req.query);
+      if (req.path.includes('whatsapp') || req.path === '/webhook') {
+        console.log(`[WEBHOOK BODY] ${JSON.stringify(req.body).substring(0, 500)}`);
+      }
+      next();
+    });
 
     // Health check
     app.get('/health', (req, res) => {
