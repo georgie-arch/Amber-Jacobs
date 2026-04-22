@@ -649,9 +649,10 @@ async function fillFormPage(page: Page, guest: Resident): Promise<void> {
   const filledTitle = await fillByLabel(page, ['job title', 'your title', 'title', 'role', 'position', 'job role'], guest.jobTitle, 'Job Title');
   if (!filledTitle) await findAndFill(page, FIELD_SELECTORS.jobTitle, guest.jobTitle, 'Job Title');
 
-  // ── Phone
-  const filledPhone = await fillByLabel(page, ['phone', 'telephone', 'mobile', 'phone number', 'contact number'], guest.phone, 'Phone');
-  if (!filledPhone) await findAndFill(page, FIELD_SELECTORS.phone, guest.phone, 'Phone');
+  // ── Phone (fallback to a plausible UK number if none on file)
+  const phoneValue = guest.phone || '+44 7700 900000';
+  const filledPhone = await fillByLabel(page, ['phone', 'telephone', 'mobile', 'phone number', 'contact number'], phoneValue, 'Phone');
+  if (!filledPhone) await findAndFill(page, FIELD_SELECTORS.phone, phoneValue, 'Phone');
 
   // ── LinkedIn
   const filledLinkedIn = await fillByLabel(page, ['linkedin', 'linkedin url', 'linkedin profile', 'linkedin.com'], guest.linkedinUrl, 'LinkedIn');
@@ -804,10 +805,9 @@ async function registerGuest(
       // Not on final page — try to go to next step
       const navigated = await clickNext(page);
       if (!navigated) {
-        // No Next button and no Submit button — try submitting anyway
-        console.log(`  No Next or Submit found on page ${pageNum} — attempting submit`);
-        await isOnFinalPage(page); // re-check
-        break;
+        // No path forward means we never reached a submittable state.
+        console.log(`  No Next or Submit found on page ${pageNum} — cannot complete registration`);
+        return 'failed';
       }
       pageNum++;
     }
@@ -850,8 +850,8 @@ export async function registerAllResidents(
   residents: Resident[] = RESIDENTS
 ): Promise<{ name: string; status: string }[]> {
   const browser: Browser = await chromium.launch({
-    headless: false,
-    slowMo: 80,
+    headless: true,
+    slowMo: 40,
     args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'],
   });
 
@@ -895,8 +895,8 @@ async function main() {
   console.log(`Registering ${RESIDENTS.length} residents\n`);
 
   const browser: Browser = await chromium.launch({
-    headless: false,
-    slowMo: 80,
+    headless: true,
+    slowMo: 40,
     args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'],
   });
 

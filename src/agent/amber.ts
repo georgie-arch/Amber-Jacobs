@@ -5,6 +5,7 @@ import { buildContextualPrompt, AMBER_SYSTEM_PROMPT } from './personality';
 import { logger } from '../utils/logger';
 import { executePcToolSafe, isBridgeConnected } from '../integrations/pc-server';
 import { sendEmail } from '../integrations/email';
+import { appendTurn, loadHistory, buildContactStoreId } from '../utils/conversation-store';
 
 dotenv.config();
 
@@ -32,7 +33,9 @@ export interface IncomingMessage {
   metadata?: object;
 }
 
-const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+// In-memory sessions are kept for 24 hours purely to free RAM.
+// All conversation history is persisted in src/data/memory/ with no expiry.
+const SESSION_GC_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface ConversationSession {
   contactId: number;
@@ -41,12 +44,15 @@ interface ConversationSession {
   knownName?: string;
   knownIndustry?: string;
   introComplete: boolean; // true once we know their name
+  claudeMessages: Anthropic.MessageParam[]; // full multi-turn history for Claude
 }
 
 export class AmberAgent {
   private memory: AmberMemory;
   private autoSend: boolean;
   private sessions = new Map<number, ConversationSession>();
+  private georgeHistory: Anthropic.MessageParam[] = [];
+  private georgeHistoryLoaded = false; // loaded from file on first message
 
   constructor() {
     this.memory = new AmberMemory();
@@ -58,14 +64,14 @@ export class AmberAgent {
   private purgeSessions(): void {
     const now = Date.now();
     for (const [id, s] of this.sessions.entries()) {
-      if (now - s.lastMessageAt > SESSION_TTL_MS) this.sessions.delete(id);
+      if (now - s.lastMessageAt > SESSION_GC_MS) this.sessions.delete(id);
     }
   }
 
   private getSession(contactId: number): ConversationSession | null {
     const s = this.sessions.get(contactId);
     if (!s) return null;
-    if (Date.now() - s.lastMessageAt > SESSION_TTL_MS) {
+    if (Date.now() - s.lastMessageAt > SESSION_GC_MS) {
       this.sessions.delete(contactId);
       return null;
     }
@@ -86,13 +92,19 @@ export class AmberAgent {
       return existing;
     }
     const isKnown = contact?.first_name && contact.first_name !== 'Unknown';
+    const storeId = buildContactStoreId(contact);
+    const savedHistory = loadHistory(storeId);
+    if (savedHistory.length > 0) {
+      console.log(`📂 Loaded ${savedHistory.length} turns from memory for ${storeId}`);
+    }
     const session: ConversationSession = {
       contactId,
       lastMessageAt: Date.now(),
       messageCount: 1,
       knownName: isKnown ? contact.first_name + (contact.last_name ? ` ${contact.last_name}` : '') : undefined,
       knownIndustry: contact?.industry || undefined,
-      introComplete: isKnown,
+      introComplete: isKnown || savedHistory.length > 0,
+      claudeMessages: savedHistory,
     };
     this.sessions.set(contactId, session);
     return session;
@@ -101,7 +113,7 @@ export class AmberAgent {
   private buildSessionContext(session: ConversationSession): string {
     const lines: string[] = [];
     lines.push(`\n## Active Session`);
-    lines.push(`- Message ${session.messageCount} in this session (started within the last hour)`);
+    lines.push(`- Message ${session.messageCount} in this session. Full history loaded from persistent memory.`);
     if (session.knownName) {
       lines.push(`- You already know their name: ${session.knownName}. Do NOT ask for it again.`);
     }
@@ -231,21 +243,64 @@ export class AmberAgent {
       response = await this.handleGeorge(incoming.content, contactId);
       console.log(`🔁 handleGeorge returned — message: "${response.message.substring(0, 60)}"`);
     } else {
-      // Build session context to inject into prompt
+      // Build session context to inject into system prompt
       const sessionCtx = session ? this.buildSessionContext(session) : '';
+      const contactContext = this.memory.buildContactContext(contactId);
 
-      // Regular member / prospect
-      const task = `
-You've received a ${incoming.message_type || 'message'} via ${incoming.platform}.
-Message content: "${incoming.content}"
-${incoming.subject ? `Subject: ${incoming.subject}` : ''}
+      const systemPrompt = `${AMBER_SYSTEM_PROMPT}
+
+## CONTACT CONTEXT
+${contactContext}
 ${sessionCtx}
 
-Generate an appropriate reply. Be natural and human. Check their history above.
-IMPORTANT: Do NOT repeat back what the person just said to you. Do NOT mirror their words back at them. Respond with something new and useful.
-`;
-      response = await this.generateResponse(task, contactId);
-      console.log(`🔁 generateResponse returned`);
+You are replying via ${incoming.platform}${incoming.subject ? ` — subject: ${incoming.subject}` : ''}.
+Reply in JSON: {"to":"<name>","platform":"${incoming.platform}","message":"<reply>","tone_notes":"<brief note>","requires_approval":false,"follow_up_in_days":null}
+Rules: Do NOT repeat back what they just said. Do NOT mirror their words. Be natural. Be brief on WhatsApp.`;
+
+      // Multi-turn: append this message to existing session history
+      const userTurn: Anthropic.MessageParam = { role: 'user', content: incoming.content };
+      const messages: Anthropic.MessageParam[] = [
+        ...(session?.claudeMessages || []),
+        userTurn
+      ];
+
+      let apiResponse: Anthropic.Message;
+      try {
+        apiResponse = await anthropic.messages.create({
+          model: MODEL,
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages
+        });
+      } catch (apiErr: any) {
+        console.error(`❌ Claude API error in handleInbound: ${apiErr?.message || apiErr}`);
+        throw apiErr;
+      }
+
+      const text = apiResponse.content[0].type === 'text' ? apiResponse.content[0].text : '';
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        response = jsonMatch ? JSON.parse(jsonMatch[0]) as AmberResponse : {
+          to: 'unknown', platform: incoming.platform, message: text,
+          tone_notes: 'raw response', requires_approval: true
+        };
+      } catch {
+        response = {
+          to: 'unknown', platform: incoming.platform, message: text,
+          tone_notes: 'raw response', requires_approval: true
+        };
+      }
+
+      // Save turns to in-memory session AND persist to file (no expiry)
+      if (session) {
+        session.claudeMessages.push(userTurn);
+        session.claudeMessages.push({ role: 'assistant', content: response.message });
+        const storeId = buildContactStoreId(contactRecord || {});
+        appendTurn(storeId, 'user', incoming.content, incoming.platform);
+        appendTurn(storeId, 'assistant', response.message, incoming.platform);
+      }
+
+      console.log(`🔁 handleInbound (multi-turn, msg #${session?.messageCount}) returned`);
     }
 
     response.requires_approval = !this.autoSend;
@@ -444,15 +499,20 @@ When George asks you to do something on his Mac, use the PC tools. Always confir
       }
     ];
 
-    const messages: Anthropic.MessageParam[] = [
-      { role: 'user', content: message }
-    ];
+    // Load George's full history from file on first message after startup
+    if (!this.georgeHistoryLoaded) {
+      this.georgeHistory = loadHistory('george');
+      this.georgeHistoryLoaded = true;
+      console.log(`📂 Loaded ${this.georgeHistory.length} turns from George's persistent memory`);
+    }
+    this.georgeHistory.push({ role: 'user', content: message });
+    const messages = this.georgeHistory; // same reference — all pushes below persist automatically
 
     // Tool use loop
     let finalText = '';
     const maxIterations = 10;
 
-    console.log(`🧠 Calling Claude API — model: ${MODEL}, bridge: ${bridgeOnline}`);
+    console.log(`🧠 Calling Claude API — model: ${MODEL}, bridge: ${bridgeOnline}, history turns: ${messages.length}`);
 
     for (let i = 0; i < maxIterations; i++) {
       let response: Anthropic.Message;
@@ -467,6 +527,8 @@ When George asks you to do something on his Mac, use the PC tools. Always confir
       } catch (apiErr: any) {
         console.error(`❌ Claude API error in handleGeorge: ${apiErr?.message || apiErr}`);
         console.error(`   Status: ${apiErr?.status}, Type: ${apiErr?.error?.type}`);
+        // Don't corrupt history on API error — pop the user message we just added
+        this.georgeHistory.pop();
         return { to: 'George', platform: 'whatsapp', message: `Sorry George, I hit an API error: ${apiErr?.message || 'unknown error'}`, tone_notes: 'error', requires_approval: false };
       }
       console.log(`✅ Claude API responded — stop_reason: ${response.stop_reason}`);
@@ -477,7 +539,11 @@ When George asks you to do something on his Mac, use the PC tools. Always confir
         finalText = (textBlocks as Anthropic.TextBlock[]).map(b => b.text).join('\n');
       }
 
-      if (response.stop_reason === 'end_turn') break;
+      if (response.stop_reason === 'end_turn') {
+        // Save assistant reply to history so next message has context
+        messages.push({ role: 'assistant', content: response.content });
+        break;
+      }
 
       if (response.stop_reason === 'tool_use') {
         const toolUseBlocks = response.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
@@ -518,11 +584,16 @@ When George asks you to do something on his Mac, use the PC tools. Always confir
       break;
     }
 
-    console.log(`🎯 handleGeorge complete — finalText length: ${finalText.length}, message: "${(finalText || 'done').substring(0, 80)}"`);
+    // Persist the completed exchange to George's memory file
+    const replyText = finalText || 'done';
+    appendTurn('george', 'user', message);
+    appendTurn('george', 'assistant', replyText);
+
+    console.log(`🎯 handleGeorge complete — finalText length: ${finalText.length}, message: "${replyText.substring(0, 80)}"`);
     return {
       to: 'George',
       platform: 'whatsapp',
-      message: finalText || "done",
+      message: replyText,
       tone_notes: 'George mode — personal assistant',
       requires_approval: false  // always auto-send to George
     };

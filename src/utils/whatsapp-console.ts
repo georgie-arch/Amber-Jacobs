@@ -9,7 +9,7 @@ const router = express.Router();
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN!;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!;
 const CONSOLE_PASSWORD = process.env.CONSOLE_PASSWORD || 'indvstry2024';
-const WA_BASE = 'https://graph.facebook.com/v18.0';
+const WA_BASE = 'https://graph.facebook.com/v21.0';
 
 // ─── AUTH MIDDLEWARE ──────────────────────────────────────────────
 

@@ -209,7 +209,7 @@ async function checkWhatsAppConnectivity(): Promise<ServiceAlert[]> {
 
   try {
     const r = await axios.get(
-      `https://graph.facebook.com/v18.0/${phoneId}`,
+      `https://graph.facebook.com/v21.0/${phoneId}`,
       { params: { access_token: token, fields: 'id,display_phone_number,verified_name' } }
     );
     if (r.data?.id) {

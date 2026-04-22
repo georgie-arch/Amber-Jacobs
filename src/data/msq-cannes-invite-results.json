@@ -1,0 +1,282 @@
+[
+  {
+    "fullName": "Peter Reid",
+    "company": "MSQ",
+    "title": "Global CEO",
+    "domain": "msqpartners.com",
+    "email": "peter.reid@msqpartners.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Kate Howe",
+    "company": "MSQ",
+    "title": "Executive Director",
+    "domain": "msqpartners.com",
+    "email": "kate.howe@msqpartners.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Bart Michels",
+    "company": "MSQ",
+    "title": "Executive Director",
+    "domain": "msqpartners.com",
+    "email": "bart.michels@msqpartners.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Joanna Lyall",
+    "company": "MSQ",
+    "title": "Executive Director",
+    "domain": "msqpartners.com",
+    "email": "Joanna.Lyall@msqpartners.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Ben Rudman",
+    "company": "MSQ",
+    "title": "Executive Director",
+    "domain": "msqpartners.com",
+    "email": "ben.rudman@msqpartners.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Aaron Lang",
+    "company": "MSQ",
+    "title": "President, MSQ NA",
+    "domain": "msqpartners.com",
+    "email": "aaron.lang@msqpartners.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Justin Cox",
+    "company": "MSQ",
+    "title": "Chief Strategy Officer, MSQ NA",
+    "domain": "msqpartners.com",
+    "email": "justin.cox@msqpartners.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Kate MacNevin",
+    "company": "Stein",
+    "title": "Chair, MSQ B2B, CEO",
+    "domain": "steinias.com",
+    "email": "Kate.Macnevin@steinias.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Tamsin James",
+    "company": "MSQ",
+    "title": "Global Chief Marketing Officer",
+    "domain": "msqpartners.com",
+    "email": "tamsin.james@msqpartners.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Fergus Dyer Smith",
+    "company": "MSQ",
+    "title": "Global Chief Product Officer",
+    "domain": "msqpartners.com",
+    "email": "fergus.dyersmith@msqpartners.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Tom Stein",
+    "company": "Stein",
+    "title": "Chair & Chief Brand Officer",
+    "domain": "steinias.com",
+    "email": "tom.stein@steinias.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Jeremy Davis",
+    "company": "Stein",
+    "title": "President EMEA & APAC",
+    "domain": "steinias.com",
+    "email": "jeremy.davis@steinias.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Taryn Crouthers",
+    "company": "Big Spaceship",
+    "title": "CEO",
+    "domain": "bigspaceship.com",
+    "email": null,
+    "source": "not_found",
+    "verified": false,
+    "status": "skipped_no_email"
+  },
+  {
+    "fullName": "Raphael Bouquillon",
+    "company": "Big Spaceship",
+    "title": "VP",
+    "domain": "bigspaceship.com",
+    "email": null,
+    "source": "not_found",
+    "verified": false,
+    "status": "skipped_no_email"
+  },
+  {
+    "fullName": "Eleanor Lloyd Malcolm",
+    "company": "Forge",
+    "title": "CGO",
+    "domain": "forgemsq.com",
+    "email": null,
+    "source": "not_found",
+    "verified": false,
+    "status": "skipped_no_email"
+  },
+  {
+    "fullName": "Adam Rowles",
+    "company": "Forge",
+    "title": "Head of Bus Dev",
+    "domain": "forgemsq.com",
+    "email": "adam.rowles@forgemsq.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Helen James",
+    "company": "The Gate London",
+    "title": "CEO",
+    "domain": "thegateworldwide.com",
+    "email": "helen.james@thegateworldwide.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Stephen Maher",
+    "company": "The Gate London",
+    "title": "Chair",
+    "domain": "thegateworldwide.com",
+    "email": "stephen.maher@thegateworldwide.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Kit Altin",
+    "company": "The Gate London",
+    "title": "CSO",
+    "domain": "thegateworldwide.com",
+    "email": "kit.altin@thegateworldwide.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Lucas Peon",
+    "company": "The Gate London",
+    "title": "CCO",
+    "domain": "thegateworldwide.com",
+    "email": "Lucas.Peon@thegateworldwide.com",
+    "source": "snov",
+    "verified": false,
+    "status": "sent"
+  },
+  {
+    "fullName": "Marina Hidalgo",
+    "company": "The Gate London",
+    "title": "Growth Director",
+    "domain": "thegateworldwide.com",
+    "email": "marina.hidalgo@thegateworldwide.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Darryl Newton",
+    "company": "M3 Labs",
+    "title": "CEO",
+    "domain": "m3.agency",
+    "email": null,
+    "source": "not_found",
+    "verified": false,
+    "status": "skipped_no_email"
+  },
+  {
+    "fullName": "Matt Williams",
+    "company": "Smarts",
+    "title": "Global Marketing Director",
+    "domain": "smarts.agency",
+    "email": null,
+    "source": "not_found",
+    "verified": false,
+    "status": "skipped_no_email"
+  },
+  {
+    "fullName": "Nat Moores",
+    "company": "Smarts",
+    "title": "Brand Futures Director",
+    "domain": "smarts.agency",
+    "email": null,
+    "source": "not_found",
+    "verified": false,
+    "status": "skipped_no_email"
+  },
+  {
+    "fullName": "Eric Stoll",
+    "company": "MSQ",
+    "title": "CEO, MSQ DX Americas",
+    "domain": "msqpartners.com",
+    "email": "eric.stoll@msqpartners.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Elliott Brown",
+    "company": "MSQ",
+    "title": "VP, Growth, MSQ DX Americas",
+    "domain": "msqpartners.com",
+    "email": "elliott.brown@msqpartners.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Jessica Quiroga",
+    "company": "MSQ",
+    "title": "Head of Marketing, MSQ DX Americas",
+    "domain": "msqpartners.com",
+    "email": "jessica.quiroga@msqpartners.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  },
+  {
+    "fullName": "Devon Foley",
+    "company": "Stein",
+    "title": "Account Supervisor",
+    "domain": "steinias.com",
+    "email": "devon.foley@steinias.com",
+    "source": "known",
+    "verified": true,
+    "status": "sent"
+  }
+]

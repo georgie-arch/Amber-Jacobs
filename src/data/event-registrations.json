@@ -2700,6 +2700,53 @@
           "date": "2026-04-17"
         }
       }
+    },
+    {
+      "eventName": "https://forms.office.com/pages/responsepage.aspx?id=hCEH5tJ9H0i4Q10mna801fu49eqEuxRMhfgxoI88QMZUQTVXMENNNzhZUUxCMVhSOEJVWEY2N1JNSSQlQCN0PWcu&route=shorturl",
+      "eventUrl": "https://forms.office.com/pages/responsepage.aspx?id=hCEH5tJ9H0i4Q10mna801fu49eqEuxRMhfgxoI88QMZUQTVXMENNNzhZUUxCMVhSOEJVWEY2N1JNSSQlQCN0PWcu&route=shorturl",
+      "addedDate": "2026-04-21",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-04-21"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-04-21"
+        }
+      }
     }
   ]
 }
