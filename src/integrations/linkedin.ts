@@ -437,6 +437,36 @@ export async function findCannesLionsLeads(maxResults = 25): Promise<LinkedInPro
 }
 
 
+export async function postToLinkedIn(text: string): Promise<boolean> {
+  if (!process.env.LINKEDIN_LI_AT_COOKIE) {
+    logger.warn('LinkedIn session cookie not set — posting disabled');
+    return false;
+  }
+  const { getLinkedInBrowser, browserPostToLinkedIn } = await import('./linkedin-browser');
+  const browser = await getLinkedInBrowser();
+  return browserPostToLinkedIn(browser, text);
+}
+
+export async function followProfile(profileUrl: string): Promise<boolean> {
+  if (!process.env.LINKEDIN_LI_AT_COOKIE) {
+    logger.warn('LinkedIn session cookie not set — follow disabled');
+    return false;
+  }
+  const { getLinkedInBrowser, browserFollowProfile } = await import('./linkedin-browser');
+  const browser = await getLinkedInBrowser();
+  return browserFollowProfile(browser, profileUrl);
+}
+
+export async function commentOnPost(postUrl: string, comment: string): Promise<boolean> {
+  if (!process.env.LINKEDIN_LI_AT_COOKIE) {
+    logger.warn('LinkedIn session cookie not set — commenting disabled');
+    return false;
+  }
+  const { getLinkedInBrowser, browserCommentOnPost } = await import('./linkedin-browser');
+  const browser = await getLinkedInBrowser();
+  return browserCommentOnPost(browser, postUrl, comment);
+}
+
 export async function sendConnectionRequest(
   profileUrl: string,
   note: string

@@ -11,7 +11,7 @@
  *   fingerprinting checks because it IS the browser.
  *
  * Key behaviours:
- *   - One shared browser instance (reused across actions to avoid re-auth)
+ *   - One shared browser + context for the whole run (see note below)
  *   - Human-like random delays between every interaction
  *   - Stealth mode: disables navigator.webdriver flag
  *   - All actions respect daily limits set in linkedin-drip.ts
@@ -30,12 +30,18 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// ─── SINGLETON BROWSER (shared) ───────────────────────────────────────────────
-// We keep ONE Browser process alive but create a FRESH BrowserContext for each
-// individual action. This prevents LinkedIn's rotating Set-Cookie responses
-// from accumulating in the cookie jar and breaking subsequent navigations.
+// ─── SINGLETON BROWSER + CONTEXT ─────────────────────────────────────────────
+// ONE Browser and ONE BrowserContext stay alive for the whole run. Per-action
+// functions open a new Page and close it when done, but the context (and its
+// cookie jar, session storage, service workers) is never torn down.
+//
+// Why: LinkedIn's session continuity depends on cookies set by the initial
+// feed load (lidc, __cf_bm, JSESSIONID, etc.). Closing and recreating the
+// context between actions discards those and causes ERR_TOO_MANY_REDIRECTS on
+// subsequent profile navigations — the opposite of what "fresh context" intends.
 
 let _browser: Browser | null = null;
+let _context: BrowserContext | null = null;
 
 async function getOrLaunchBrowser(): Promise<Browser> {
   if (_browser) return _browser;
@@ -56,71 +62,114 @@ async function getOrLaunchBrowser(): Promise<Browser> {
   return _browser;
 }
 
-// Create a clean context with the session injected as a request header.
-// We use extraHTTPHeaders rather than addCookies because addCookies triggers
-// ERR_TOO_MANY_REDIRECTS when LinkedIn's Set-Cookie responses accumulate
-// during the redirect chain.
-//
-// IMPORTANT: LinkedIn requires the full set of session cookies (li_at, JSESSIONID,
-// bcookie, lidc, etc.) to authenticate non-public profile pages.
-// Set LINKEDIN_FULL_COOKIE_STRING in .env to the full Cookie header value from
-// Chrome DevTools → Network → any linkedin.com request → Request Headers → Cookie.
-// This is more reliable than individual cookies.
-async function newAuthenticatedPage(browser: Browser): Promise<{ page: Page; ctx: BrowserContext }> {
+// Parse the LINKEDIN_FULL_COOKIE_STRING (raw Cookie header from Chrome DevTools)
+// into Playwright cookie objects for addCookies(). Splitting on '; ' handles
+// values that contain '=' (base64) and quoted values like bcookie="v=2&...".
+function parseLinkedInCookies(fullCookieString: string, liAt: string, csrfToken: string) {
+  const domain = '.linkedin.com';
+  const path = '/';
+
+  // Inject all cookies from the full string. The shared context accumulates
+  // fresh routing cookies (lidc, JSESSIONID) after the first feed load, so
+  // stale values from .env are only used on the very first navigation.
+  // lang is stripped — a stale en-us locale value causes redirect loops on non-US IPs.
+  const STRIP = new Set(['lang']);
+
+  if (fullCookieString) {
+    return fullCookieString.split(/;\s+/).flatMap(part => {
+      const eqIdx = part.indexOf('=');
+      if (eqIdx === -1) return [];
+      const name = part.substring(0, eqIdx).trim();
+      const value = part.substring(eqIdx + 1).trim();
+      if (!name || !value || STRIP.has(name)) return [];
+      return [{
+        name,
+        value,
+        domain,
+        path,
+        secure: true,
+        httpOnly: name === 'li_at' || name === 'bscookie',
+        sameSite: 'None' as const,
+      }];
+    });
+  }
+
+  // Minimal fallback if no full string
+  const cookies = [];
+  if (liAt) cookies.push({ name: 'li_at', value: liAt, domain, path, secure: true, httpOnly: true, sameSite: 'None' as const });
+  if (csrfToken) cookies.push({ name: 'JSESSIONID', value: `"${csrfToken}"`, domain, path, secure: true, httpOnly: false, sameSite: 'None' as const });
+  return cookies;
+}
+
+// Get or create the shared BrowserContext. Called once; subsequent calls
+// return the same context so cookies accumulate across actions.
+async function getOrCreateContext(browser: Browser): Promise<BrowserContext> {
+  if (_context) return _context;
+
   const fullCookieString = process.env.LINKEDIN_FULL_COOKIE_STRING || '';
   const liAt = process.env.LINKEDIN_LI_AT_COOKIE || '';
   const csrfToken = (process.env.LINKEDIN_CSRF_TOKEN || '').replace(/^"|"$/g, '');
 
-  // Prefer the full cookie string (more complete session fingerprint)
-  const cookieHeader = fullCookieString ||
-    (csrfToken ? `li_at=${liAt}; JSESSIONID="${csrfToken}"` : `li_at=${liAt}`);
-
-  const ctx = await browser.newContext({
+  _context = await browser.newContext({
     userAgent:
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     viewport: { width: 1280, height: 800 },
-    locale: 'en-US',
-    extraHTTPHeaders: {
-      Cookie: cookieHeader,
-    },
+    locale: 'en-GB',
   });
 
-  await ctx.addInitScript(() => {
+  const cookies = parseLinkedInCookies(fullCookieString, liAt, csrfToken);
+  if (cookies.length > 0) await _context.addCookies(cookies);
+
+  await _context.addInitScript(() => {
     Object.defineProperty((globalThis as any).navigator, 'webdriver', { get: () => undefined });
     (globalThis as any).chrome = { runtime: {} };
   });
 
-  const page = await ctx.newPage();
-  return { page, ctx };
+  return _context;
 }
 
-// Validate that the li_at session cookie is still working
+// Open a new Page from the shared context. Returns a pseudo-ctx whose close()
+// only closes the page — callers use the same try/finally { ctx.close() }
+// pattern but the shared context stays alive.
+async function newAuthenticatedPage(browser: Browser): Promise<{ page: Page; ctx: { close: () => Promise<void> } }> {
+  const context = await getOrCreateContext(browser);
+  const page = await context.newPage();
+  return { page, ctx: { close: async () => { await page.close().catch(() => {}); } } };
+}
+
+// Validate that the li_at session cookie is still working.
+// Keeps the context alive after validation so the feed cookies persist.
 export async function getLinkedInBrowser(): Promise<Browser> {
   const browser = await getOrLaunchBrowser();
 
   logger.info('🔄 Validating LinkedIn session...');
   const { page, ctx } = await newAuthenticatedPage(browser);
   try {
-    await page.goto('https://www.linkedin.com/in/reidhoffman', {
+    await page.goto('https://www.linkedin.com/feed/', {
       waitUntil: 'domcontentloaded',
-      timeout: 20000,
+      timeout: 25000,
     });
     const url = page.url();
-    if (url.includes('/login') || url.includes('/authwall') || url.includes('/checkpoint')) {
+    if (url.includes('/login') || url.includes('/authwall') || url.includes('/checkpoint') || url.includes('/uas/')) {
       throw new Error(
-        'LinkedIn li_at session cookie is expired. ' +
-        'Open Chrome → linkedin.com → DevTools → Application → Cookies → copy li_at → update LINKEDIN_LI_AT_COOKIE in .env'
+        'LinkedIn session expired or invalid. ' +
+        'Go to linkedin.com in Chrome → DevTools → Application → Cookies → copy li_at value → update LINKEDIN_LI_AT_COOKIE in .env. ' +
+        'Also copy the full Cookie header from DevTools → Network → any feed request → update LINKEDIN_FULL_COOKIE_STRING.'
       );
     }
-    logger.info('✅ Session valid');
+    logger.info('✅ Session valid (feed loaded)');
   } finally {
-    await ctx.close();
+    await ctx.close(); // closes just the page; context stays alive
   }
 
   return browser;
 }
 
 export async function closeBrowser(): Promise<void> {
+  if (_context) {
+    await _context.close().catch(() => {});
+    _context = null;
+  }
   if (_browser) {
     await _browser.close();
     _browser = null;
@@ -129,6 +178,56 @@ export async function closeBrowser(): Promise<void> {
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
+
+// Dismiss LinkedIn cookie/privacy consent banners if present
+async function dismissConsentBanner(page: Page): Promise<void> {
+  const acceptBtn = page.locator('button:has-text("Accept"), button[action-type="ACCEPT"]').first();
+  if (await acceptBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await acceptBtn.click();
+    await humanDelay(600, 1000);
+    logger.info('  Cookie consent banner dismissed');
+  }
+}
+
+// Export for use in scripts that need a raw authenticated page
+export { newAuthenticatedPage };
+
+// Get the headline from a LinkedIn profile
+export async function browserGetProfileHeadline(
+  browser: Browser,
+  profileUrl: string
+): Promise<string | null> {
+  const { page, ctx } = await newAuthenticatedPage(browser);
+  try {
+    await gotoWithRetry(page, profileUrl);
+    await humanDelay(2500, 4000);
+    await dismissConsentBanner(page);
+    await humanDelay(1000, 1500);
+
+    // Multiple selectors for the headline field
+    const selectors = [
+      '.text-body-medium.break-words',
+      '[data-field="headline"]',
+      '.pv-text-details__left-panel .text-body-medium',
+      'div.ph5 .text-body-medium',
+      'h2 + .text-body-medium',
+    ];
+
+    for (const sel of selectors) {
+      const el = page.locator(sel).first();
+      if (await el.isVisible({ timeout: 2000 }).catch(() => false)) {
+        const text = await el.textContent();
+        if (text?.trim()) return text.trim();
+      }
+    }
+
+    // Fallback: screenshot for manual review
+    await page.screenshot({ path: 'src/scripts/screenshots/linkedin-profile-debug.png' });
+    return null;
+  } finally {
+    await ctx.close();
+  }
+}
 
 // Human-like pause: random ms between min and max
 function humanDelay(minMs = 800, maxMs = 2400): Promise<void> {
@@ -152,15 +251,31 @@ async function isLoggedIn(page: Page): Promise<boolean> {
   return loggedIn;
 }
 
-// Navigate to a profile URL with one automatic retry on auth failure.
-// LinkedIn occasionally rejects the injected cookie on the first request
-// (rate limit / CDN routing). A 10s pause + second attempt usually succeeds.
+// Navigate with retry on auth failure or redirect loops.
+// If the target URL triggers ERR_TOO_MANY_REDIRECTS (LinkedIn's CDN/locale
+// routing loop), warm up on the feed first — it's always reachable and the
+// navigation sets the correct lidc/lang cookies, allowing the target to load.
+// Navigate with warm-up + retry.
+// A brand-new page (about:blank) that jumps straight to a deep profile URL
+// triggers ERR_TOO_MANY_REDIRECTS because LinkedIn hasn't yet set its CDN /
+// locale routing cookies for this page. Visiting the feed first lets LinkedIn
+// set those cookies, after which the target URL loads cleanly.
 async function gotoWithRetry(page: Page, url: string): Promise<void> {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  const normalised = url.replace(/^https?:\/\/[a-z]{2,3}\.linkedin\.com\//, 'https://www.linkedin.com/');
+
+  // Proactive warm-up: only for new (blank) pages navigating to non-feed URLs
+  if (page.url() === 'about:blank' && !normalised.includes('/feed/')) {
+    logger.info('  Warming up on feed before profile navigation...');
+    await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await humanDelay(1500, 2500);
+  }
+
+  await page.goto(normalised, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
   if (!await isLoggedIn(page)) {
     logger.info('  Retrying navigation after 10s...');
     await humanDelay(10000, 12000);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(normalised, { waitUntil: 'domcontentloaded', timeout: 30000 });
   }
 }
 
@@ -215,8 +330,6 @@ export async function browserSendConnectionRequest(
     await humanDelay(2000, 4000);
 
     // ── Private profile: authwall with Connect button ────────
-    // Authenticated users viewing private profiles land on /authwall.
-    // LinkedIn still renders a Connect button there — click it if present.
     if (page.url().includes('/authwall')) {
       logger.info('  Private profile (authwall) — looking for Connect button...');
       const authwallConnect = page
@@ -226,7 +339,6 @@ export async function browserSendConnectionRequest(
         await authwallConnect.click({ force: true });
         logger.info('  Clicked Connect from authwall page');
         await humanDelay(1500, 2500);
-        // Fall through to the note/send flow below
       } else {
         logger.warn('  No Connect button on authwall — profile fully private');
         return false;
@@ -244,8 +356,6 @@ export async function browserSendConnectionRequest(
     }
 
     // ── Check connection status ───────────────────────────────
-    // Do this BEFORE trying to find Connect button to avoid false matches.
-    // "has-text" does substring match — "connections" would match "Connect".
     const isPending = await page.locator('button[aria-label*="Pending"], button:text-is("Pending")').first().isVisible({ timeout: 1000 }).catch(() => false);
     const isConnected = await page.locator('button:text-is("Message")').first().isVisible({ timeout: 1000 }).catch(() => false);
     const isFollowOnly = await page.locator('button:text-is("Follow")').first().isVisible({ timeout: 1000 }).catch(() => false);
@@ -254,10 +364,9 @@ export async function browserSendConnectionRequest(
     if (isConnected) { logger.info('  Already connected'); return false; }
 
     // ── Find and click the Connect button ────────────────────
-    // Use exact text match and specific aria-labels to avoid false positives.
     let connectClicked = false;
 
-    // Option A: aria-label starting with "Invite" (most reliable)
+    // Option A: aria-label starting with "Invite"
     const ariaConnectBtn = page.locator('button[aria-label^="Invite"][aria-label*="connect"]').first();
     if (await ariaConnectBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await ariaConnectBtn.click();
@@ -275,7 +384,7 @@ export async function browserSendConnectionRequest(
       }
     }
 
-    // Option C: "More" dropdown → Connect (profiles where Connect is hidden)
+    // Option C: "More" dropdown → Connect
     if (!connectClicked) {
       const moreBtn = page.locator('button[aria-label*="More actions"]').first();
       if (await moreBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -304,14 +413,11 @@ export async function browserSendConnectionRequest(
     await humanDelay(1500, 2500);
 
     // ── Handle "How do you know X?" dialog ────────────────────
-    // LinkedIn sometimes asks this before showing the invite modal.
-    // Selecting "Other" is the most neutral option.
     const otherBtn = page.locator('button:has-text("Other"), label:has-text("Other")').first();
     if (await otherBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       logger.info('  Handling "How do you know?" dialog — selecting Other');
       await otherBtn.click();
       await humanDelay(800, 1400);
-      // Click Next/Continue if present
       const nextBtn = page.locator('button:has-text("Next"), button:has-text("Continue")').first();
       if (await nextBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await nextBtn.click();
@@ -339,7 +445,6 @@ export async function browserSendConnectionRequest(
     }
 
     // ── Send ──────────────────────────────────────────────────
-    // Multiple possible send button locations
     const sendSelectors = [
       'button[aria-label="Send invitation"]',
       'button[aria-label="Send now"]',
@@ -363,7 +468,6 @@ export async function browserSendConnectionRequest(
       logger.info(`✅ Connection request sent to ${profileUrl}`);
       return true;
     } else {
-      // Check if a dismiss/close modal exists — clean up before returning
       const closeBtn = page.locator('button[aria-label="Dismiss"], button[aria-label="Close"]').first();
       await closeBtn.click().catch(() => {});
       logger.warn('  Send button not found — connection may not have been sent');
@@ -374,7 +478,7 @@ export async function browserSendConnectionRequest(
     logger.error(`Connection request failed for ${profileUrl}: ${err.message}`);
     return false;
   } finally {
-    await ctx.close().catch(() => {});
+    await ctx.close();
   }
 }
 
@@ -401,25 +505,18 @@ export async function browserSendMessage(
       return false;
     }
 
-    // Find the authenticated Message button.
-    // We use the same text-is selector as browserCheckIsConnected — it's confirmed to work.
-    // If a modal overlay is intercepting pointer events we use force:true to bypass it.
     const messageBtn = page.locator('button:text-is("Message")').first();
-
     if (!await messageBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
       logger.warn(`  No Message button on ${profileUrl} — may not be connected yet`);
       return false;
     }
 
-    // force:true bypasses any overlay that intercepts pointer events
     await messageBtn.click({ force: true });
     await humanDelay(1200, 2500);
     logger.info('  Message window opened');
 
-    // Type message in compose box
     const compose = page.locator('.msg-form__contenteditable, [data-placeholder="Write a message..."]').first();
     if (!await compose.isVisible({ timeout: 4000 }).catch(() => false)) {
-      // Try clicking the message area
       await page.locator('.msg-overlay-conversation-bubble').first().click().catch(() => {});
       await humanDelay(800, 1500);
     }
@@ -427,13 +524,11 @@ export async function browserSendMessage(
     await compose.click().catch(() => {});
     await humanDelay(400, 800);
 
-    // Type with human-like pacing
     for (const char of message) {
       await page.keyboard.type(char, { delay: Math.floor(Math.random() * 60) + 20 });
     }
     await humanDelay(800, 1600);
 
-    // Send with Enter or send button
     const sendBtn = page.locator('button[type="submit"].msg-form__send-button, button:has-text("Send") >> nth=-1').first();
     const sendVisible = await sendBtn.isVisible({ timeout: 2000 }).catch(() => false);
 
@@ -451,7 +546,7 @@ export async function browserSendMessage(
     logger.error(`Message failed for ${profileUrl}: ${err.message}`);
     return false;
   } finally {
-    await ctx.close().catch(() => {});
+    await ctx.close();
   }
 }
 
@@ -477,12 +572,296 @@ export async function browserCheckIsConnected(
   }
 }
 
+// ─── POST TO LINKEDIN FEED ────────────────────────────────────────────────────
+
+export async function browserPostToLinkedIn(
+  browser: Browser,
+  text: string
+): Promise<boolean> {
+  const { page, ctx } = await newAuthenticatedPage(browser);
+  try {
+    logger.info('📝 Opening LinkedIn feed to create post...');
+    await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await humanDelay(2000, 3500);
+
+    if (!await isLoggedIn(page)) {
+      logger.warn('LinkedIn session expired — refresh LINKEDIN_LI_AT_COOKIE in .env');
+      return false;
+    }
+
+    await dismissConsentBanner(page);
+    await humanDelay(1000, 1800);
+
+    // Click "Start a post"
+    const startSelectors = [
+      'button.share-box-feed-entry__trigger',
+      'button[aria-label*="start a post"]',
+      'button[aria-label*="Start a post"]',
+      '[data-view-name="FEED_SHARE_BOX_TRIGGER"]',
+      'button:has-text("Start a post")',
+      '.share-box-feed-entry__trigger',
+      'div[data-placeholder="Start a post"] button',
+    ];
+
+    let opened = false;
+    for (const sel of startSelectors) {
+      const btn = page.locator(sel).first();
+      if (await btn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await btn.click();
+        opened = true;
+        logger.info('  Post modal opened');
+        break;
+      }
+    }
+
+    if (!opened) {
+      const placeholder = page.locator('text="Start a post"').first();
+      if (await placeholder.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await placeholder.click();
+        opened = true;
+        logger.info('  Post modal opened via placeholder text');
+      }
+    }
+
+    if (!opened) {
+      await page.screenshot({ path: 'src/scripts/screenshots/linkedin-post-debug.png' });
+      logger.warn('  Could not find "Start a post" button — screenshot saved for debugging');
+      return false;
+    }
+
+    await humanDelay(1500, 2500);
+
+    // Type into the post editor
+    const editorSelectors = [
+      '.ql-editor[data-placeholder]',
+      '[contenteditable="true"][data-placeholder*="talk about"]',
+      '[contenteditable="true"][data-placeholder*="share"]',
+      '.share-creation-state__placeholder',
+    ];
+
+    let typed = false;
+    for (const sel of editorSelectors) {
+      const editor = page.locator(sel).first();
+      if (await editor.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await editor.click();
+        await humanDelay(500, 900);
+        for (const char of text) {
+          await page.keyboard.type(char, { delay: Math.floor(Math.random() * 60) + 20 });
+        }
+        typed = true;
+        logger.info(`  Post text typed (${text.length} chars)`);
+        break;
+      }
+    }
+
+    if (!typed) {
+      logger.warn('  Could not find post editor');
+      return false;
+    }
+
+    await humanDelay(1200, 2200);
+
+    // Submit the post
+    const postBtnSelectors = [
+      'button.share-actions__primary-action',
+      'button[data-control-name="share.post"]',
+      'button.artdeco-button--primary:has-text("Post")',
+      'button:has-text("Post"):not(:has-text("Start a post"))',
+    ];
+
+    for (const sel of postBtnSelectors) {
+      const btn = page.locator(sel).last();
+      if (await btn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await btn.click();
+        await humanDelay(2500, 4000);
+        logger.info('✅ LinkedIn post published');
+        return true;
+      }
+    }
+
+    logger.warn('  Could not find Post submit button');
+    return false;
+
+  } catch (err: any) {
+    logger.error(`LinkedIn post failed: ${err.message}`);
+    return false;
+  } finally {
+    await ctx.close();
+  }
+}
+
+// ─── FOLLOW PROFILE ───────────────────────────────────────────────────────────
+
+export async function browserFollowProfile(
+  browser: Browser,
+  profileUrl: string
+): Promise<boolean> {
+  const { page, ctx } = await newAuthenticatedPage(browser);
+  try {
+    logger.info(`👣 Following profile: ${profileUrl}`);
+    await gotoWithRetry(page, profileUrl);
+    await humanDelay(2000, 3500);
+
+    if (!await isLoggedIn(page)) {
+      logger.warn('LinkedIn session expired');
+      return false;
+    }
+
+    const alreadyFollowing = await page.locator('button:text-is("Following")').first()
+      .isVisible({ timeout: 1500 }).catch(() => false);
+    if (alreadyFollowing) {
+      logger.info('  Already following this profile');
+      return false;
+    }
+
+    let followClicked = false;
+
+    const directBtn = page.locator(
+      '.pvs-profile-actions button:text-is("Follow"), .pv-top-card-v2-ctas button:text-is("Follow"), button[aria-label*="Follow"]'
+    ).first();
+    if (await directBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await directBtn.click({ force: true });
+      followClicked = true;
+      logger.info('  Clicked Follow button directly');
+    }
+
+    if (!followClicked) {
+      const moreBtn = page.locator('button[aria-label*="More actions"]').first();
+      if (await moreBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await moreBtn.click();
+        await humanDelay(600, 1200);
+        const followOption = page.locator('[role="menuitem"]:text-is("Follow")').first();
+        if (await followOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await followOption.click();
+          followClicked = true;
+          logger.info('  Clicked Follow via More dropdown');
+        } else {
+          await page.keyboard.press('Escape');
+        }
+      }
+    }
+
+    if (!followClicked) {
+      logger.warn(`  No Follow button found on ${profileUrl}`);
+      return false;
+    }
+
+    await humanDelay(1500, 2500);
+    logger.info(`✅ Now following: ${profileUrl}`);
+    return true;
+
+  } catch (err: any) {
+    logger.error(`Follow failed for ${profileUrl}: ${err.message}`);
+    return false;
+  } finally {
+    await ctx.close();
+  }
+}
+
+// ─── COMMENT ON A POST ────────────────────────────────────────────────────────
+// postUrl: a LinkedIn post URL, e.g. https://www.linkedin.com/feed/update/urn:li:activity:...
+
+export async function browserCommentOnPost(
+  browser: Browser,
+  postUrl: string,
+  comment: string
+): Promise<boolean> {
+  const { page, ctx } = await newAuthenticatedPage(browser);
+  try {
+    logger.info(`💬 Commenting on post: ${postUrl}`);
+    await page.goto(postUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await humanDelay(2500, 4000);
+
+    if (!await isLoggedIn(page)) {
+      logger.warn('LinkedIn session expired');
+      return false;
+    }
+
+    const commentBtnSelectors = [
+      'button[aria-label*="Comment"]',
+      'button:has-text("Comment")',
+      '[data-control-name="comment"]',
+    ];
+
+    let boxOpened = false;
+    for (const sel of commentBtnSelectors) {
+      const btn = page.locator(sel).first();
+      if (await btn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await btn.click({ force: true });
+        boxOpened = true;
+        logger.info('  Comment box opened');
+        break;
+      }
+    }
+
+    await humanDelay(1000, 2000);
+
+    const editorSelectors = [
+      '.comments-comment-box__form .ql-editor',
+      '.ql-editor[data-placeholder*="omment"]',
+      '[contenteditable="true"][data-placeholder*="omment"]',
+    ];
+
+    let typed = false;
+    for (const sel of editorSelectors) {
+      const editor = page.locator(sel).first();
+      if (await editor.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await editor.click();
+        await humanDelay(400, 800);
+        for (const char of comment) {
+          await page.keyboard.type(char, { delay: Math.floor(Math.random() * 70) + 25 });
+        }
+        typed = true;
+        logger.info(`  Comment typed (${comment.length} chars)`);
+        break;
+      }
+    }
+
+    if (!typed) {
+      logger.warn('  Could not find comment editor');
+      return false;
+    }
+
+    await humanDelay(800, 1500);
+
+    const submitSelectors = [
+      'button[aria-label="Post comment"]',
+      'button[aria-label*="Post comment"]',
+      '.comments-comment-box__submit-button',
+      'button.artdeco-button--primary:has-text("Post")',
+    ];
+
+    for (const sel of submitSelectors) {
+      const btn = page.locator(sel).first();
+      if (await btn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await btn.click();
+        await humanDelay(1500, 2500);
+        logger.info(`✅ Comment posted on: ${postUrl}`);
+        return true;
+      }
+    }
+
+    // Fallback: Ctrl+Enter
+    await page.keyboard.press('Control+Enter');
+    await humanDelay(1500, 2500);
+    logger.info(`✅ Comment submitted via keyboard on: ${postUrl}`);
+    return true;
+
+  } catch (err: any) {
+    logger.error(`Comment failed for ${postUrl}: ${err.message}`);
+    return false;
+  } finally {
+    await ctx.close();
+  }
+}
+
 // ─── BATCH: VISIT + CONNECT FOR A LIST OF PROFILES ───────────────────────────
 
 export interface LinkedInBrowserAction {
   profileUrl: string;
-  action: 'visit' | 'connect' | 'message';
+  action: 'visit' | 'connect' | 'message' | 'follow' | 'comment' | 'post';
   message?: string;
+  postText?: string;
 }
 
 export interface LinkedInBrowserResult {
@@ -512,6 +891,12 @@ export async function runLinkedInBrowserActions(
         success = await browserSendConnectionRequest(browser, profileUrl, message || '');
       } else if (action === 'message') {
         success = await browserSendMessage(browser, profileUrl, message || '');
+      } else if (action === 'follow') {
+        success = await browserFollowProfile(browser, profileUrl);
+      } else if (action === 'comment') {
+        success = await browserCommentOnPost(browser, profileUrl, message || '');
+      } else if (action === 'post') {
+        success = await browserPostToLinkedIn(browser, (actions[i] as any).postText || message || '');
       }
     } catch (err: any) {
       logger.error(`Action failed: ${err.message}`);
@@ -521,7 +906,6 @@ export async function runLinkedInBrowserActions(
 
     results.push({ profileUrl, action, success });
 
-    // Human-like gap between actions
     if (i < actions.length - 1) {
       const delay = delayBetweenMs + Math.floor(Math.random() * 4000);
       logger.info(`  Waiting ${Math.round(delay / 1000)}s before next action...`);

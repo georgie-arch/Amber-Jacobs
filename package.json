@@ -32,9 +32,15 @@
     "events:sync": "ts-node --project tsconfig.json src/scripts/sync-event-registrations.ts",
     "events:sync:dry": "ts-node --project tsconfig.json src/scripts/sync-event-registrations.ts --dry-run",
     "events:register": "ts-node --project tsconfig.json src/tools/event-registrar.ts",
+    "browseruse:register": "cd browser-use && UV_CACHE_DIR=/Users/georgeguise/AMBER/browser-use/.uv-cache uv run python register_event.py",
+    "browseruse:cli": "cd browser-use && UV_CACHE_DIR=/Users/georgeguise/AMBER/browser-use/.uv-cache uv run browser-use",
+    "browseruse:doctor": "cd browser-use && UV_CACHE_DIR=/Users/georgeguise/AMBER/browser-use/.uv-cache uv run browser-use doctor",
+    "oi": "open-interpreter/.venv/bin/interpreter",
     "contacts:export": "ts-node --project tsconfig.json src/scripts/export-all-sent-contacts.ts",
     "bridge": "ts-node src/integrations/pc-bridge.ts",
-    "bridge:start": "node dist/integrations/pc-bridge.js"
+    "bridge:start": "node dist/integrations/pc-bridge.js",
+    "find-email": "ts-node --project tsconfig.json src/integrations/email-waterfall.ts",
+    "inbox:manage": "ts-node --project tsconfig.json src/scripts/inbox-manager.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -47,6 +53,8 @@
     "googleapis": "^140.0.1",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.9",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "telegraf": "^4.16.3",
     "twilio": "^5.0.4",
     "winston": "^3.12.0",

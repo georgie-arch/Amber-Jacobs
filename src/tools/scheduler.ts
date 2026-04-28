@@ -106,6 +106,19 @@ export function startScheduler(agent: AmberAgent): void {
     await runAndAlertHealthCheck();
   });
 
+  // ─── DAILY 6AM: Inbox management — archive promos, organise event invites ─
+  cron.schedule('0 6 * * *', async () => {
+    logger.info('📂 Running inbox manager...');
+    const { execSync } = require('child_process');
+    try {
+      execSync(
+        `npx ts-node --project tsconfig.json ${path.resolve(__dirname, '../scripts/inbox-manager.ts')}`,
+        { cwd: path.resolve(__dirname, '../../'), encoding: 'utf-8', stdio: 'pipe' }
+      );
+      logger.info('Inbox manager complete.');
+    } catch (err: any) { logger.error('Inbox manager failed:', err.message); }
+  });
+
   // ─── DAILY 10AM: Sponsor outreach batch (50/day) ──────────────
   cron.schedule('0 10 * * *', async () => {
     logger.info('📨 Running daily sponsor outreach batch...');
@@ -135,6 +148,36 @@ export function startScheduler(agent: AmberAgent): void {
     logger.info('📋 Sending Sunday event recap to members...');
     await sendSundayEventRecap(agent);
   });
+
+  // ─── EVERY TUESDAY 2PM LONDON: SXSW London follow-up to Aran ───────
+  cron.schedule('0 14 * * 2', async () => {
+    logger.info('📧 Sending scheduled SXSW London follow-up to Aran...');
+    const { execSync } = require('child_process');
+    try {
+      execSync(
+        `npx ts-node --project tsconfig.json ${path.resolve(__dirname, '../scripts/send-sxsw-london-followup.ts')}`,
+        { cwd: path.resolve(__dirname, '../../'), encoding: 'utf-8' }
+      );
+      logger.info('✅ SXSW London follow-up sent');
+    } catch (err: any) {
+      logger.error('SXSW London follow-up failed:', err.message);
+    }
+  }, { timezone: 'Europe/London' });
+
+  // ─── EVERY TUESDAY 2PM LONDON: Laura DEI / press pass follow-up ─────
+  cron.schedule('0 14 * * 2', async () => {
+    logger.info('📧 Running guarded SXSW London DEI follow-up to Laura...');
+    const { execSync } = require('child_process');
+    try {
+      execSync(
+        `npx ts-node --project tsconfig.json ${path.resolve(__dirname, '../scripts/send-sxsw-london-dei-press-pass-followup.ts')}`,
+        { cwd: path.resolve(__dirname, '../../'), encoding: 'utf-8' }
+      );
+      logger.info('✅ Laura follow-up job complete');
+    } catch (err: any) {
+      logger.error('Laura follow-up failed:', err.message);
+    }
+  }, { timezone: 'Europe/London' });
 
   // ─── TUESDAY 24 MAR 2026: POWER HOUSE OUTREACH — 17 BRANDS ──────
   // Staggered by recipient timezone. All land at 10am local time.

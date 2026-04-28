@@ -15,6 +15,13 @@ logs/
 
 # Dependencies
 node_modules/
+.venv/
+browser-use/.venv/
+browser-use/.uv-cache/
+browser-use/.browser-use/
+browser-use/__pycache__/
+open-interpreter/.venv/
+open-interpreter/__pycache__/
 
 # OS
 .DS_Store
