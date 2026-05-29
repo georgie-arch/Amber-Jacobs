@@ -15,8 +15,18 @@ const BUSINESS_ACCOUNT_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
 // them a private DM reply using Instagram's private_replies endpoint.
 // This works even if the user has never messaged us before.
 
+const CANNES_DM = `Hey! Thanks for the comment. Here's everything about the Indvstry Power House at Cannes Lions 2026 — our private villa activation bringing together the most senior creative and marketing leaders for the week. All the details are here: https://powerhouse.indvstryclvb.com — Amber x`;
+
+const MEMBERSHIP_DM = `Hey! Thanks for reaching out. Indvstry Clvb is a digital private members club for creative professionals — exclusive events, a curated network, mentorship and collaboration opportunities. Apply here: https://indvstryclvb.com/apply or grab a call with our founder George: https://calendly.com/itsvisionnaire/30min — Amber x`;
+
 const KEYWORD_TRIGGERS: Record<string, string> = {
-  CANNES: `Hey! Thanks for the comment. Here's everything about the Indvstry Power House at Cannes Lions 2026 — our private villa activation bringing together the most senior creative and marketing leaders for the week. All the details are here: https://powerhouse.indvstryclvb.com — Amber x`,
+  CANNES: CANNES_DM,
+  POWERHOUSE: CANNES_DM,
+  VILLA: CANNES_DM,
+  JOIN: MEMBERSHIP_DM,
+  MEMBERSHIP: MEMBERSHIP_DM,
+  APPLY: MEMBERSHIP_DM,
+  MEMBER: MEMBERSHIP_DM,
 };
 
 async function handleCommentKeyword(
@@ -249,75 +259,32 @@ export async function processInstagramActivity(agent: AmberAgent): Promise<void>
   }
 }
 
-// ─── GET RECENT FOLLOWERS ────────────────────────────────────────
+// ─── GET FOLLOWERS COUNT ─────────────────────────────────────────
+// Note: Instagram Graph API does not expose a follower list endpoint.
+// We can only read the count. Welcome DMs use the webhook approach instead.
 
-export async function getRecentFollowers(limit = 20): Promise<any[]> {
-  if (!ACCESS_TOKEN || !BUSINESS_ACCOUNT_ID) return [];
+export async function getFollowersCount(): Promise<number> {
+  if (!ACCESS_TOKEN || !BUSINESS_ACCOUNT_ID) return 0;
 
   try {
     const response = await axios.get(
-      `${GRAPH_API}/${BUSINESS_ACCOUNT_ID}/followers`,
-      {
-        params: {
-          access_token: ACCESS_TOKEN,
-          fields: 'id,username,name',
-          limit
-        }
-      }
+      `${GRAPH_API}/${BUSINESS_ACCOUNT_ID}`,
+      { params: { access_token: ACCESS_TOKEN, fields: 'followers_count' } }
     );
-    return response.data?.data || [];
+    return response.data?.followers_count || 0;
   } catch (error: any) {
-    logger.error('Error fetching followers:', error.response?.data || error.message);
-    return [];
+    logger.error('Error fetching follower count:', error.response?.data || error.message);
+    return 0;
   }
 }
 
 // ─── SEND WELCOME DMs TO NEW FOLLOWERS ──────────────────────────
+// Instagram Graph API has no endpoint to list followers.
+// Welcome DMs are sent when a new follower triggers a webhook
+// messaging event (they DM us first). This polling fallback is a no-op.
 
-export async function sendInstagramWelcomeDMs(agent: AmberAgent): Promise<void> {
-  if (!ACCESS_TOKEN || !BUSINESS_ACCOUNT_ID) {
-    logger.warn('Instagram credentials not configured — skipping welcome DMs');
-    return;
-  }
-
-  logger.info('👋 Checking for new Instagram followers to welcome...');
-  const memory = agent.getMemory();
-  const recentFollowers = await getRecentFollowers(20);
-
-  for (const follower of recentFollowers) {
-    // Skip if already in our system — they've been welcomed before
-    const existingContact = memory.findContact({ instagram_handle: follower.username });
-    if (existingContact) continue;
-
-    logger.info(`✨ New follower to welcome: @${follower.username}`);
-
-    const task = `
-Draft a warm, brief welcome DM for a new Instagram follower.
-Their Instagram username is @${follower.username}.
-Keep it to one or two sentences. Welcome them to the Indvstry Clvb world.
-Be genuine and curious — ask what they're working on or how they found us.
-Do not pitch membership directly. Just open a conversation.
-`;
-
-    const response = await agent.generateResponse(task);
-
-    if (!response.requires_approval) {
-      const sent = await sendInstagramDM(follower.id, response.message);
-      if (sent) {
-        // Save to memory so we don't welcome them again
-        memory.upsertContact({
-          first_name: follower.name?.split(' ')[0] || follower.username,
-          last_name: follower.name?.split(' ').slice(1).join(' ') || undefined,
-          instagram_handle: follower.username,
-          source: 'instagram_follower'
-        });
-        memory.logActivity('instagram_welcome_sent', 'instagram', undefined);
-      }
-    } else {
-      logger.info(`⏳ Welcome DM for @${follower.username} queued for George's approval`);
-      logger.info(`Draft: ${response.message}`);
-    }
-  }
+export async function sendInstagramWelcomeDMs(_agent: AmberAgent): Promise<void> {
+  logger.info('👋 Instagram welcome DMs: handled via webhook on first DM contact (no follower list API)');
 }
 
 // ─── WEBHOOK HANDLER ─────────────────────────────────────────────
@@ -419,7 +386,30 @@ export function setupInstagramWebhook(app: express.Application, agent: AmberAgen
         if (!message || message.is_echo || senderId === BUSINESS_ACCOUNT_ID) continue;
 
         const senderName: string = messagingEvent.sender?.name || 'there';
-        const messageText: string = message.text || '';
+
+        // Determine content/type — handle story mentions, shares, attachments
+        let messageText: string = message.text || '';
+        let messageType: string = 'dm';
+
+        if (message.attachments?.length) {
+          const attach = message.attachments[0];
+          if (attach.type === 'story_mention') {
+            messageText = '(mentioned us in their story)';
+            messageType = 'story_mention';
+          } else if (attach.type === 'share') {
+            messageText = attach.payload?.title || '(shared a post)';
+            messageType = 'share';
+          } else if (attach.type === 'image') {
+            messageText = attach.payload?.title || '(sent an image)';
+            messageType = 'image';
+          } else if (attach.type === 'video') {
+            messageText = attach.payload?.title || '(sent a video)';
+            messageType = 'video';
+          } else if (attach.type === 'audio') {
+            messageText = '(sent a voice message)';
+            messageType = 'audio';
+          }
+        }
 
         try {
           const amberResponse = await agent.handleInbound({
@@ -429,7 +419,7 @@ export function setupInstagramWebhook(app: express.Application, agent: AmberAgen
               source: 'instagram_dm'
             },
             content: messageText,
-            message_type: 'dm',
+            message_type: messageType,
             message_id: message.mid,
             thread_id: messagingEvent.thread_id
           });

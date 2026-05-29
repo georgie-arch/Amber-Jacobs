@@ -134,27 +134,7 @@ Residency: https://lu.ma/t4ek2yn7
 
 Happy to tell you more.`,
   },
-  {
-    name:    'Stanislava Zaharieva',
-    email:   'stanislava.zaharieva@informa.com',
-    subject: 'Indvstry Power House — Cannes Lions 2026',
-    body: `Hi Stanislava,
-
-I am reaching out from Indvstry Clvb ahead of Cannes Lions this June.
-
-We are running Indvstry Power House — a private villa residency during Lions week, 21 to 26 June. A curated programme for a small group of senior creative and media leaders, with private dinners, events and closed-door conversations running throughout the week alongside the festival.
-
-Informa's reach across events, media and knowledge makes it one of the most connected organisations in the industry. Given that, I wanted to make sure this landed with the right person ahead of Cannes.
-
-We also run a done-for-you RSVP concierge for residents across the 2,500+ fringe events happening that week — a genuinely useful service for anyone with a full schedule.
-
-All the details are here:
-
-Powerhouse.indvstryclvb.com
-Residency: https://lu.ma/t4ek2yn7
-
-Would love to have you involved.`,
-  },
+  // Stanislava Zaharieva (Informa) — excluded per George's instruction: no outreach to Informa or Cannes Lions
   {
     name:    'Jordan',
     email:   'jordan@howlett.io',

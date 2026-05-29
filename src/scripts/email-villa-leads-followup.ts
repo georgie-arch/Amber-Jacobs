@@ -1,162 +1,123 @@
 /**
- * email-villa-leads-followup.ts
+ * Villa residency follow-up — all leads from the interest form
+ * Angle: brands finalising Cannes plans, only 2 rooms left, Spotify + TikTok activation incoming
+ * From: Amber Jacobs <amber@indvstryclvb.com>
  *
- * Follow-up to all warm/interested villa room leads.
- * 5 rooms confirmed, 2 remaining — are you still in?
- *
- * Scheduled: Friday 27 March 2026 at 08:00 UTC
- *
- * Run manually:
- *   npx ts-node --project tsconfig.json src/scripts/email-villa-leads-followup.ts
+ * Run: npx ts-node --project tsconfig.json src/scripts/email-villa-leads-followup.ts
+ * Scheduled: 9am BST 6 May 2026 via macOS `at`
  */
 
-import axios from 'axios';
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import * as cron from 'node-cron';
-
 dotenv.config();
 
-async function getToken(): Promise<string> {
-  const tenantId = process.env.OUTLOOK_TENANT_ID || 'common';
-  const r = await axios.post(
-    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
-    new URLSearchParams({
-      client_id: process.env.OUTLOOK_CLIENT_ID || '',
-      client_secret: process.env.OUTLOOK_CLIENT_SECRET || '',
-      refresh_token: process.env.OUTLOOK_REFRESH_TOKEN || '',
-      grant_type: 'refresh_token',
-      scope: 'https://graph.microsoft.com/Mail.Send offline_access',
-    }),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  );
-  return r.data.access_token;
-}
+import { sendEmailFrom } from '../integrations/email';
 
-function getLogoBase64(): string {
-  try {
-    return fs.readFileSync(path.resolve(__dirname, '../../src/assets/indvstry-logo-email.png')).toString('base64');
-  } catch { return ''; }
-}
+const FROM_ADDRESS = 'amber@indvstryclvb.com';
+const FROM_NAME    = 'Amber Jacobs';
 
-function buildHtml(text: string): string {
-  const logoB64 = getLogoBase64();
-  const logoHtml = logoB64
-    ? `<img src="cid:indvstry-logo" alt="Indvstry Clvb" width="180" style="display:block;margin-bottom:12px;" />`
-    : '';
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
-<body style="font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;max-width:600px;margin:0 auto;padding:32px 20px;line-height:1.6;">
-  <div>${text.replace(/\n/g, '<br>')}</div>
-  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e0e0e0;">
-    <p style="margin:0 0 2px 0;font-size:16px;font-weight:bold;">Amber Jacobs</p>
-    <p style="margin:0 0 14px 0;font-size:13px;color:#555;">Indvstry Clvb, Community Manager</p>
-    ${logoHtml}
-    <p style="margin:0 0 4px 0;">+44 7438 932403</p>
-    <p style="margin:0 0 16px 0;"><a href="http://www.indvstryclvb.com" style="color:#1a1a1a;">www.indvstryclvb.com</a></p>
-  </div>
-</body></html>`;
-}
+const LEADS: { name: string; email: string }[] = [
+  { name: 'Venus',     email: 'venusashu1@gmail.com' },
+  { name: 'Frank',     email: 'frankskully@hotmail.com' },
+  { name: 'LaToya',    email: 'latoyaharding89@gmail.com' },
+  { name: 'Sabina',    email: 'sabina.jasinska25@gmail.com' },
+  { name: 'Anais',     email: 'Anais603@gmail.com' },
+  { name: 'Melissa',   email: 'Letswork@macomedia.co.uk' },
+  { name: 'Tola',      email: 'tola.m@hotmail.com' },
+  { name: 'Gilda',     email: 'gildavallem@gmail.com' },
+  { name: 'Cassy',     email: 'Hello@cassyisabella.com' },
+  { name: 'Nico',      email: 'Nicorose92@icloud.com' },
+  { name: 'Daisy',     email: 'daisy@dave.sports' },
+  { name: 'Isabel',    email: 'isabel.lamers@gmail.com' },
+  { name: 'Sabrina',   email: 'sfearonmelville@gmail.com' },
+  { name: 'Ashley',    email: 'abrooks@michelemariepr.com' },
+  { name: 'Karen',     email: 'karen-grillo@hotmail.co.uk' },
+  { name: 'Naomi',     email: 'niluyomade@gmail.com' },
+  { name: 'Marian',    email: 'marianjsreynolds@gmail.com' },
+  { name: 'Katie',     email: 'klangers@hotmail.com' },
+  { name: 'Angela',    email: 'angelanjerik@gmail.com' },
+  { name: 'Anwar',     email: 'anwarhossenfilmmaker@gmail.com' },
+  { name: 'Elizabeth', email: 'Elizabeth@bunastreetcollective.com' },
+  { name: 'Wesley',    email: 'enquiriesmrw9ine@gmail.com' },
+  { name: 'Elizabeth', email: 'E.ogunkoya@hotmail.com' },
+  { name: 'Jonathan',  email: 'jonathanmbenga1@hotmail.com' },
+  { name: 'Christina', email: 'christinangoyi@gmail.com' },
+  { name: 'James',     email: 'James@urbansyndicate.co.uk' },
+  { name: 'Aileen',    email: 'aileen.phan1996@gmail.com' },
+  { name: 'Dinesh',    email: 'dineshj@ndtv.com' },
+  { name: 'Martha',    email: 'info@everydaymolo.com' },
+  { name: 'Eliana',    email: 'eclopesdasilva@gmail.com' },
+  { name: 'Tamika',    email: 'Hello@culture-deluxe.com' },
+  { name: 'Bonnae',    email: 'Bonnaeogunlade@omc.com' },
+  { name: 'Shireen',   email: 'crowninggreatnesscic@gmail.com' },
+  { name: 'Betul',     email: 'betulsusamis@gmail.com' },
+  { name: 'Sherkera',  email: 'Sherkerawilson@yahoo.com' },
+  { name: 'Ingrid',    email: 'ingrid@kensingtongrey.co' },
+  { name: 'Tia',       email: 'tiakaycee12@gmail.com' },
+  { name: 'Charlotte', email: 'charlotte@stylecartel.com' },
+  { name: 'Ro',        email: 'rolaurren@gmail.com' },
+  { name: 'Maria',     email: 'maria@wearecreativemedia.org' },
+  { name: 'Anam',      email: 'anam@thehanginghouse.com' },
+  { name: 'Musa',      email: 'msahmad0015@gmail.com' },
+  { name: 'Jim',       email: 'Jim@iqzone.com' },
+];
 
-async function sendEmail(token: string, to: string, toName: string, firstName: string): Promise<void> {
-  const logoB64 = getLogoBase64();
+function buildEmail(firstName: string): { subject: string; body: string } {
+  const subject = 'Cannes is coming together fast. Two rooms left.';
 
   const body = `Hi ${firstName},
 
-Quick one — 5 of our 7 rooms in the Indvstry Clvb Cannes villa are now confirmed. We have just 2 left.
+Hope you're doing well.
 
-You showed interest earlier and we did not want those last spots to go without checking in with you first.
+Brands and agencies are locking in their plans for Cannes Lions right now, and I wanted to reach out before the last two spots at Indvstry Power House are gone.
 
-If Cannes Lions is still on your radar this June, now is the moment to move. We would love to jump on a quick call and make sure your Cannes week gets off to the best possible start.
+You showed interest earlier and we have been holding off on these final rooms while things came together. A couple of exciting things worth knowing about:
 
-Amber
-Indvstry Clvb`;
+We are about to go live with a brand collaboration activation in partnership with Spotify and TikTok during the festival. Residents will be right at the centre of it.
 
-  const message: any = {
-    subject: 'Cannes villa — 2 rooms left',
-    body: { contentType: 'HTML', content: buildHtml(body) },
-    toRecipients: [{ emailAddress: { address: to, name: toName } }],
-    from: { emailAddress: { address: process.env.EMAIL_USER || '', name: 'Amber Jacobs' } },
-  };
+And as a reminder, here is what the stay includes:
 
-  if (logoB64) {
-    message.attachments = [{
-      '@odata.type': '#microsoft.graph.fileAttachment',
-      name: 'indvstry-logo.png',
-      contentType: 'image/png',
-      contentBytes: logoB64,
-      contentId: 'indvstry-logo',
-      isInline: true,
-    }];
-  }
+A £5,000 delegate pass included in your residency
+A curated programme of exclusive events across the week
+A villa full of creative founders, directors and brand leaders
+A brilliant base just minutes from La Croisette
 
-  await axios.post(
-    'https://graph.microsoft.com/v1.0/me/sendMail',
-    { message },
-    { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-  );
+Everyone needs somewhere great to stay in Cannes. We would love it to be with us, surrounded by interesting people doing creative things.
+
+If you have not spoken with George yet, you can book a quick call here:
+https://calendly.com/itsvisionnaire/30min
+
+Or take a look at the full residency deck:
+https://canva.link/56bgbawj3ctalgu
+
+These last two spots will go quickly. Now is the time to sort it.
+
+Amber`;
+
+  return { subject, body };
 }
 
-// ─── RECIPIENTS ───────────────────────────────────────────────────────────────
-// Excluded: Alexandra, Katie, Naomi, Olga, Chanelle, Kelly (per George)
-// Excluded: HOT LEADS (paid), COLD leads (uninterested/unresponded)
+async function main() {
+  console.log(`Sending villa follow-up to ${LEADS.length} leads from ${FROM_ADDRESS}...`);
+  console.log();
 
-const recipients = [
-  { name: 'Venus Ashu',               email: 'venusashu1@gmail.com',              firstName: 'Venus' },
-  { name: 'Frank Skully',             email: 'frankskully@hotmail.com',            firstName: 'Frank' },
-  { name: 'Denise Maxwell',           email: 'denise.maxwell@gmail.com',           firstName: 'Denise' },
-  { name: 'Abi Blend',                email: 'blendworld@gmail.com',               firstName: 'Abi' },
-  { name: 'LaToya Harding',           email: 'latoyaharding89@gmail.com',          firstName: 'LaToya' },
-  { name: 'Sabina Jasinska',          email: 'sabina.jasinska25@gmail.com',        firstName: 'Sabina' },
-  { name: 'Tendai Pottinger',         email: 'hello@tendaipottinger.com',          firstName: 'Tendai' },
-  { name: 'Anais Motolo',             email: 'Anais603@gmail.com',                 firstName: 'Anais' },
-  { name: 'Tola Mayegun',             email: 'tola.m@hotmail.com',                 firstName: 'Tola' },
-  { name: 'Gilda Valle',              email: 'gildavallem@gmail.com',              firstName: 'Gilda' },
-  { name: 'Cassy Isabella Woodley',   email: 'Hello@cassyisabella.com',            firstName: 'Cassy' },
-  { name: 'Nico Rose',                email: 'Nicorose92@icloud.com',              firstName: 'Nico' },
-  { name: 'Daisy Domenghini',         email: 'daisy.domenghini@vaynermedia.com',   firstName: 'Daisy' },
-  { name: 'Adeze Ogunbunmi',          email: 'dogunbunmi@gmail.com',               firstName: 'Adeze' },
-  { name: 'Aleida Hammond',           email: 'aleida.studio@outlook.com',          firstName: 'Aleida' },
-  { name: 'Sabrina Fearon-Melville',  email: 'sfearonmelville@gmail.com',          firstName: 'Sabrina' },
-  { name: 'Rakia Finley',             email: 'rakia@coppervine.io',                firstName: 'Rakia' },
-  { name: 'Ebeneza Blanche',          email: 'info@ebenezablanche.com',            firstName: 'Ebeneza' },
-  { name: 'Ashley Brooks',            email: 'abrooks@michelemariepr.com',         firstName: 'Ashley' },
-  { name: 'Karen Grillo',             email: 'karen-grillo@hotmail.co.uk',         firstName: 'Karen' },
-  { name: 'Marian Reynolds',          email: 'marianjsreynolds@gmail.com',         firstName: 'Marian' },
-  { name: 'Angela Njeri',             email: 'angelanjerik@gmail.com',             firstName: 'Angela' },
-  { name: 'Paula Grunfeld',           email: 'paula@bunnycreative.com',            firstName: 'Paula' },
-  { name: 'Anwar Hossen',             email: 'anwarhossenfilmmaker@gmail.com',     firstName: 'Anwar' },
-];
+  let sent = 0;
+  let failed = 0;
 
-// ─── SEND ────────────────────────────────────────────────────────────────────
-
-async function sendAll(): Promise<void> {
-  const token = await getToken();
-  for (const r of recipients) {
-    await sendEmail(token, r.email, r.name, r.firstName);
-    console.log(`✅ Sent to ${r.name} <${r.email}>`);
-    if (recipients.indexOf(r) < recipients.length - 1) {
-      await new Promise(res => setTimeout(res, 1200));
+  for (const lead of LEADS) {
+    const { subject, body } = buildEmail(lead.name);
+    const ok = await sendEmailFrom(lead.email, subject, body, FROM_ADDRESS, FROM_NAME);
+    if (ok) {
+      console.log(`  Sent    -> ${lead.name} <${lead.email}>`);
+      sent++;
+    } else {
+      console.error(`  FAILED  -> ${lead.name} <${lead.email}>`);
+      failed++;
     }
+    await new Promise(r => setTimeout(r, 1500));
   }
-  console.log(`\n✅ ${recipients.length} follow-up emails sent.`);
+
+  console.log();
+  console.log(`Done. Sent: ${sent} / ${LEADS.length}. Failed: ${failed}.`);
 }
 
-// ─── SCHEDULER ───────────────────────────────────────────────────────────────
-// Friday 27 March 2026 at 08:00 UTC
-
-const RUN_NOW = process.env.RUN_NOW === 'true';
-
-if (RUN_NOW) {
-  sendAll().catch(console.error);
-} else {
-  console.log('Scheduler running — villa follow-ups will fire Friday 27 March 2026 at 08:00 UTC');
-  cron.schedule('0 8 27 3 *', async () => {
-    const now = new Date();
-    const m = now.getUTCMonth(); // 2 = March
-    const d = now.getUTCDate();  // 27
-    if (m !== 2 || d !== 27) return;
-    console.log('Firing villa lead follow-ups...');
-    await sendAll().catch(console.error);
-  });
-}
+main().catch(err => { console.error('Fatal:', err); process.exit(1); });

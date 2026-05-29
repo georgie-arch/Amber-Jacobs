@@ -66,7 +66,7 @@
         },
         "LaToya Shambo": {
           "status": "failed",
-          "date": "2026-04-12"
+          "date": "2026-05-03"
         },
         "Romy Gama": {
           "status": "success",
@@ -87,6 +87,10 @@
         "Silva Stone": {
           "status": "success",
           "date": "2026-04-12"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-03"
         }
       }
     },
@@ -232,8 +236,8 @@
       }
     },
     {
-      "eventName": "AI & Tech Sandbox @ Cannes Lions 2026",
-      "eventUrl": "https://aiandtechsandbox.com/",
+      "eventName": "A.I and Technology Sandbox @ Cannes Lions 2026",
+      "eventUrl": "https://aiandtechsandbox.com/?utm_campaign=298231506-UK%20Event%3A%20PMG%20x%20Google%204%2F28&utm_medium=email&_hsmi=28092200&utm_content=28092200&utm_source=hs_email",
       "addedDate": "2026-04-08",
       "registrations": {
         "George Guise": {
@@ -459,9 +463,10 @@
       }
     },
     {
-      "eventName": "Adobe @ Cannes",
+      "eventName": "Adobe @ Cannes (homepage CTA attempt)",
       "eventUrl": "https://canneslions.adobe.com/2026/home",
       "addedDate": "2026-04-09",
+      "note": "Initial failed attempt via the homepage CTA. All residents were later registered successfully via the direct signup form on 2026-05-02.",
       "registrations": {
         "George Guise": {
           "status": "failed",
@@ -1206,49 +1211,6 @@
       }
     },
     {
-      "eventName": "Marketing Leadership Summit",
-      "eventUrl": "https://brand-innovators.com/events/marketing-leadership-summit-cannes-2026/",
-      "addedDate": "2026-04-09",
-      "registrations": {
-        "George Guise": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Dinalva Tavares": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Abi Blend": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "LaToya Shambo": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Romy Gama": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Chanelle Pal": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Olga Viktorova": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Kelly Adanna": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Silva Stone": {
-          "status": "failed",
-          "date": "2026-04-09"
-        }
-      }
-    },
-    {
       "eventName": "Microsoft Beach House",
       "eventUrl": "https://www.canneslions.com/festival/festival-partners/microsoft",
       "addedDate": "2026-04-09",
@@ -1430,40 +1392,54 @@
       "addedDate": "2026-04-09",
       "registrations": {
         "George Guise": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
         },
         "Dinalva Tavares": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
         },
-        "Abi Blend": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "LaToya Shambo": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Romy Gama": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Chanelle Pal": {
-          "status": "failed",
-          "date": "2026-04-09"
-        },
-        "Olga Viktorova": {
-          "status": "failed",
-          "date": "2026-04-09"
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
         },
         "Kelly Adanna": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
         },
         "Silva Stone": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-03",
+          "note": "manually registered by George"
         }
       }
     },
@@ -1473,40 +1449,44 @@
       "addedDate": "2026-04-09",
       "registrations": {
         "George Guise": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
         },
         "Dinalva Tavares": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
         },
         "Abi Blend": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
         },
         "LaToya Shambo": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
         },
         "Romy Gama": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
         },
         "Chanelle Pal": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
         },
         "Olga Viktorova": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
         },
         "Kelly Adanna": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
         },
         "Silva Stone": {
-          "status": "failed",
-          "date": "2026-04-09"
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-03"
         }
       }
     },
@@ -1826,39 +1806,43 @@
       "registrations": {
         "George Guise": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-03"
         },
         "Dinalva Tavares": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-03"
         },
         "Abi Blend": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "LaToya Shambo": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-03"
         },
         "Romy Gama": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Chanelle Pal": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-03"
         },
         "Olga Viktorova": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-03"
         },
         "Kelly Adanna": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-03"
         },
         "Silva Stone": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-03"
         }
       }
     },
@@ -1916,39 +1900,43 @@
       "registrations": {
         "George Guise": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Dinalva Tavares": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Abi Blend": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "LaToya Shambo": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Romy Gama": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Chanelle Pal": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Olga Viktorova": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Kelly Adanna": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Silva Stone": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-04"
         }
       }
     },
@@ -2135,39 +2123,43 @@
       "registrations": {
         "George Guise": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Dinalva Tavares": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Abi Blend": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "LaToya Shambo": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Romy Gama": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Chanelle Pal": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Olga Viktorova": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Kelly Adanna": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Silva Stone": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-04"
         }
       }
     },
@@ -2358,39 +2350,43 @@
       "registrations": {
         "George Guise": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Dinalva Tavares": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Abi Blend": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "LaToya Shambo": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Romy Gama": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Chanelle Pal": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Olga Viktorova": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Kelly Adanna": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
         },
         "Silva Stone": {
           "status": "failed",
-          "date": "2026-04-09"
+          "date": "2026-05-04"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-04"
         }
       }
     },
@@ -2487,39 +2483,43 @@
       "registrations": {
         "George Guise": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
         },
         "Dinalva Tavares": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
         },
         "Abi Blend": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
         },
         "LaToya Shambo": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
         },
         "Romy Gama": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
         },
         "Chanelle Pal": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
         },
         "Olga Viktorova": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
         },
         "Kelly Adanna": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
         },
         "Silva Stone": {
           "status": "failed",
-          "date": "2026-04-13"
+          "date": "2026-05-04"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-04"
         }
       }
     },
@@ -2745,6 +2745,1003 @@
         "Anthony Okoro": {
           "status": "success",
           "date": "2026-04-21"
+        }
+      }
+    },
+    {
+      "eventName": "https://events.tubi.tv/tubicabana2026/SavetheDate",
+      "eventUrl": "https://events.tubi.tv/tubicabana2026/SavetheDate",
+      "addedDate": "2026-04-23",
+      "registrations": {
+        "George Guise": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Dinalva Tavares": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Abi Blend": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "LaToya Shambo": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Romy Gama": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Chanelle Pal": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Olga Viktorova": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Kelly Adanna": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Silva Stone": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Anthony Okoro": {
+          "status": "registered",
+          "date": "2026-04-24"
+        }
+      }
+    },
+    {
+      "eventName": "Axios House @ Cannes Lions 2026",
+      "eventUrl": "https://signupforupdates-axioshouse-cannes2026.splashthat.com",
+      "addedDate": "2026-04-24",
+      "registrations": {
+        "George Guise": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Dinalva Tavares": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Abi Blend": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "LaToya Shambo": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Romy Gama": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Chanelle Pal": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Olga Viktorova": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Kelly Adanna": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Silva Stone": {
+          "status": "registered",
+          "date": "2026-04-24"
+        },
+        "Anthony Okoro": {
+          "status": "registered",
+          "date": "2026-04-24"
+        }
+      }
+    },
+    {
+      "eventName": "https://redditcannes2026.splashthat.com/",
+      "eventUrl": "https://redditcannes2026.splashthat.com/",
+      "addedDate": "2026-04-27",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-04-28"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-04-28"
+        }
+      }
+    },
+    {
+      "eventName": "VaynerX @ Cannes Lions 2026",
+      "eventUrl": "https://events.vaynerx.com/vaynerxcanneslions2026",
+      "addedDate": "2026-05-01",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        }
+      }
+    },
+    {
+      "eventName": "SIGAWomen Lounge @ Roberto Cavalli Cannes",
+      "eventUrl": "https://www.eventbrite.co.uk/e/sigawomen-lounge-roberto-cavalli-cannes-tickets-1980991714545",
+      "addedDate": "2026-05-01",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        }
+      }
+    },
+    {
+      "eventName": "https://www.deloittedigital.com/us/en/lp/cannes-wsj.html",
+      "eventUrl": "https://www.deloittedigital.com/us/en/lp/cannes-wsj.html",
+      "addedDate": "2026-05-01",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-01"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-01"
+        }
+      }
+    },
+    {
+      "eventName": "Plage 3CV 2026 @ Lucia Beach, Cannes",
+      "eventUrl": "https://plage3cv.com",
+      "addedDate": "2026-05-01",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        }
+      }
+    },
+    {
+      "eventName": "Marketing Leadership Summit @ Cannes 2026",
+      "eventUrl": "https://brand-innovators.com/events/marketing-leadership-summit-cannes-2026/",
+      "addedDate": "2026-05-01",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-01",
+          "note": "manually registered by George"
+        }
+      }
+    },
+    {
+      "eventName": "Adobe @ Cannes",
+      "eventUrl": "https://canneslions.adobe.com/2026/signup",
+      "addedDate": "2026-05-01",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-02"
+        }
+      }
+    },
+    {
+      "eventName": "Inkwell Beach @ Cannes",
+      "eventUrl": "https://luma.com/inkwellcannes2026?tk=u7fiuE",
+      "addedDate": "2026-05-02",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-02",
+          "note": "manually registered by George"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-02",
+          "note": "manually registered by George"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-02",
+          "note": "manually registered by George"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-02",
+          "note": "manually registered by George"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-02",
+          "note": "manually registered by George"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-02",
+          "note": "manually registered by George"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-02",
+          "note": "manually registered by George"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-02",
+          "note": "manually registered by George"
+        }
+      }
+    },
+    {
+      "eventName": "SIGNAL Sessions",
+      "eventUrl": "https://luma.com/yeh4oq9c?tk=aUPQHy",
+      "addedDate": "2026-05-02",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-02"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-03"
+        }
+      }
+    },
+    {
+      "eventName": "Pre-Cannes Popup Party",
+      "eventUrl": "https://luma.com/yoxf5s0o?tk=OZnhnT",
+      "addedDate": "2026-05-03",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-03"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-03"
+        }
+      }
+    },
+    {
+      "eventName": "PMW Powerlist Watch Party @ Cannes 2026",
+      "eventUrl": "https://www.campaignatcannes.com/pmw-powerlist-watchparty",
+      "addedDate": "2026-05-04",
+      "registrations": {
+        "George Guise": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "Dinalva Tavares": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "Kelly Adanna": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "LaToya Shambo": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "Olga Viktorova": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "Chanelle Pal": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "Romy Gama": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "Silva Stone": {
+          "status": "failed",
+          "date": "2026-05-04"
+        },
+        "Abi Blend": {
+          "status": "failed",
+          "date": "2026-05-04"
+        }
+      }
+    },
+    {
+      "eventName": "https://forms.monday.com/forms/2efe3ba1901669818a49233deddde5a8?r=use1",
+      "eventUrl": "https://forms.monday.com/forms/2efe3ba1901669818a49233deddde5a8?r=use1",
+      "addedDate": "2026-05-05",
+      "registrations": {
+        "Dinalva Tavares": {
+          "status": "failed",
+          "date": "2026-05-05"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-05"
+        },
+        "Kelly Adanna": {
+          "status": "failed",
+          "date": "2026-05-05"
+        },
+        "LaToya Shambo": {
+          "status": "failed",
+          "date": "2026-05-05"
+        },
+        "Olga Viktorova": {
+          "status": "failed",
+          "date": "2026-05-05"
+        },
+        "Chanelle Pal": {
+          "status": "failed",
+          "date": "2026-05-05"
+        },
+        "Romy Gama": {
+          "status": "failed",
+          "date": "2026-05-05"
+        },
+        "Silva Stone": {
+          "status": "failed",
+          "date": "2026-05-05"
+        },
+        "Abi Blend": {
+          "status": "failed",
+          "date": "2026-05-05"
+        }
+      }
+    },
+    {
+      "eventName": "B2B Summit with IAA and LinkedIn at Cannes Lions 2026",
+      "eventUrl": "https://iaaglobal.org",
+      "addedDate": "2026-05-02",
+      "notes": "Group registration sent by email to kirsty.giordani@iaaglobal.org from access@indvstryclvb.com on 2026-05-02. All 10 residents listed in the email body.",
+      "registrations": {
+        "George Guise": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "Dinalva Tavares": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "Anthony Okoro": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "Kelly Adanna": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "LaToya Shambo": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "Olga Viktorova": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "Chanelle Pal": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "Romy Gama": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "Silva Stone": {
+          "status": "pending",
+          "date": "2026-05-02"
+        },
+        "Abi Blend": {
+          "status": "pending",
+          "date": "2026-05-02"
+        }
+      }
+    },
+    {
+      "eventName": "Later Lounge Cannes 2026",
+      "eventUrl": "https://luma.com/cannes_laterlounge",
+      "addedDate": "2026-05-08",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-08",
+          "notes": "Approval required — pending host review"
+        }
+      }
+    },
+    {
+      "eventName": "Canva Creative Cabana Cannes 2026",
+      "eventUrl": "https://events.canva.com/canva-creative-cabana-2026?lid=fenjq0ecz2hk&utm_source=braze&utm_medium=email&utm_campaign=email_schedule_engagement_preevent_cannes2026_260507_nonuser&utm_content=b2b_exp_global-gen_acquisition_pro_evt_cannes-2026",
+      "addedDate": "2026-05-08",
+      "registrations": {
+        "George Guise": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "Dinalva Tavares": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "Anthony Okoro": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "Kelly Adanna": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "LaToya Shambo": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "Olga Viktorova": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "Chanelle Pal": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "Romy Gama": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "Silva Stone": {
+          "status": "failed",
+          "date": "2026-05-08"
+        },
+        "Abi Blend": {
+          "status": "failed",
+          "date": "2026-05-08"
+        }
+      }
+    },
+    {
+      "eventName": "Opening Red Carpet Celebration of Women in Creativity",
+      "eventUrl": "https://worldwomanfoundation.com/cannes2026/open-mic/",
+      "addedDate": "2026-05-10",
+      "notes": "All 10 residents successfully signed up for Event 1: Opening Red Carpet Celebration of Women in Creativity, June 22, 2026, 7:00-10:00 PM, La Scène des Artistes at the World Woman Cannes Agenda.",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-10"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-10"
+        }
+      }
+    },
+    {
+      "eventName": "Le Club MSQ 26 – Internet Brunch IRL",
+      "eventUrl": "https://connect.msqpartners.com/internet-brunch-irl",
+      "addedDate": "2026-05-13",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "Olga Viktorova": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "Chanelle Pal": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "Romy Gama": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "Silva Stone": {
+          "status": "success",
+          "date": "2026-05-13"
+        },
+        "Abi Blend": {
+          "status": "success",
+          "date": "2026-05-13"
+        }
+      }
+    },
+    {
+      "eventName": "Aussie Cannes Welcome Drinks",
+      "eventUrl": "https://www.eventbrite.co.uk/e/aussie-cannes-welcome-drinks-tickets-1983086584357?aff=oddtdtcreator",
+      "addedDate": "2026-05-14",
+      "notes": "George confirmed George Guise, Dinalva Tavares, Anthony Okoro, Kelly Adanna, and LaToya Shambo were already registered. Automation attempts for Olga Viktorova, Chanelle Pal, Romy Gama, Silva Stone, and Abi Blend were blocked by Eventbrite's checkout flow on 2026-05-14 before attendee fields loaded.",
+      "registrations": {
+        "George Guise": {
+          "status": "success",
+          "date": "2026-05-14"
+        },
+        "Dinalva Tavares": {
+          "status": "success",
+          "date": "2026-05-14"
+        },
+        "Anthony Okoro": {
+          "status": "success",
+          "date": "2026-05-14"
+        },
+        "Kelly Adanna": {
+          "status": "success",
+          "date": "2026-05-14"
+        },
+        "LaToya Shambo": {
+          "status": "success",
+          "date": "2026-05-14"
+        },
+        "Olga Viktorova": {
+          "status": "failed",
+          "date": "2026-05-14"
+        },
+        "Chanelle Pal": {
+          "status": "failed",
+          "date": "2026-05-14"
+        },
+        "Romy Gama": {
+          "status": "failed",
+          "date": "2026-05-14"
+        },
+        "Silva Stone": {
+          "status": "failed",
+          "date": "2026-05-14"
+        },
+        "Abi Blend": {
+          "status": "failed",
+          "date": "2026-05-14"
         }
       }
     }

@@ -24,11 +24,17 @@
  *   await closeBrowser();
  */
 
-import { chromium, Browser, BrowserContext, Page } from 'playwright';
+import { Browser, BrowserContext, Page } from 'playwright';
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { logger } from '../utils/logger';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Apply full stealth suite — patches navigator.webdriver, plugins, permissions,
+// WebGL fingerprint, chrome.runtime, etc. Must be called before any launch.
+chromium.use(StealthPlugin());
 
 // ─── SINGLETON BROWSER + CONTEXT ─────────────────────────────────────────────
 // ONE Browser and ONE BrowserContext stay alive for the whole run. Per-action
@@ -65,15 +71,41 @@ async function getOrLaunchBrowser(): Promise<Browser> {
 // Parse the LINKEDIN_FULL_COOKIE_STRING (raw Cookie header from Chrome DevTools)
 // into Playwright cookie objects for addCookies(). Splitting on '; ' handles
 // values that contain '=' (base64) and quoted values like bcookie="v=2&...".
+//
+// Only inject auth-essential LinkedIn cookies. Strip everything else.
+//
+// KEEP (auth-essential):
+//   li_at, bscookie, bcookie — primary auth tokens
+//   JSESSIONID              — CSRF token
+//   li_gc                   — GDPR consent
+//   lidc                    — CDN datacenter routing (required — feed fails without it)
+//   li_mc, li_alerts        — session state
+//   timezone, g_state       — locale/Google auth
+//   liap, sdui_ver          — LinkedIn platform/UI version cookies
+//
+// STRIP (causes problems or irrelevant):
+//   lang        — stale locale causes redirect loops on non-US IPs
+//   __cf_bm     — Cloudflare bot token, 30-min TTL. Short-lived, stale value causes issues.
+//   _pxvid      — PerimeterX visitor ID fingerprinted to the original Chrome browser.
+//                 Injecting a Chrome-fingerprinted _pxvid into Playwright causes PX to
+//                 detect a fingerprint mismatch and trigger a 302 self-redirect loop on
+//                 profile pages (feed is more lenient). Stripping lets PX assign a fresh
+//                 ID matching our actual browser fingerprint.
+//   dfpfpt, AnalyticsSyncHistory, lms_ads, lms_analytics — ad/analytics tracking
+//   AMCV_*, AMCVS_*, aam_uuid — Adobe Analytics (fingerprint-tied)
+//   fptctx2     — DoubleClick fingerprint context
 function parseLinkedInCookies(fullCookieString: string, liAt: string, csrfToken: string) {
   const domain = '.linkedin.com';
   const path = '/';
-
-  // Inject all cookies from the full string. The shared context accumulates
-  // fresh routing cookies (lidc, JSESSIONID) after the first feed load, so
-  // stale values from .env are only used on the very first navigation.
-  // lang is stripped — a stale en-us locale value causes redirect loops on non-US IPs.
-  const STRIP = new Set(['lang']);
+  const STRIP = new Set([
+    'lang', '__cf_bm',
+    '_pxvid',
+    'dfpfpt', 'AnalyticsSyncHistory', 'lms_ads', 'lms_analytics',
+    'AMCVS_14215E3D5995C57C0A495C55%40AdobeOrg',
+    'AMCV_14215E3D5995C57C0A495C55%40AdobeOrg',
+    'aam_uuid',
+    'fptctx2',
+  ]);
 
   if (fullCookieString) {
     return fullCookieString.split(/;\s+/).flatMap(part => {
@@ -94,7 +126,7 @@ function parseLinkedInCookies(fullCookieString: string, liAt: string, csrfToken:
     });
   }
 
-  // Minimal fallback if no full string
+  // Minimal fallback when no full cookie string is set
   const cookies = [];
   if (liAt) cookies.push({ name: 'li_at', value: liAt, domain, path, secure: true, httpOnly: true, sameSite: 'None' as const });
   if (csrfToken) cookies.push({ name: 'JSESSIONID', value: `"${csrfToken}"`, domain, path, secure: true, httpOnly: false, sameSite: 'None' as const });
@@ -112,7 +144,7 @@ async function getOrCreateContext(browser: Browser): Promise<BrowserContext> {
 
   _context = await browser.newContext({
     userAgent:
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     viewport: { width: 1280, height: 800 },
     locale: 'en-GB',
   });
@@ -120,20 +152,38 @@ async function getOrCreateContext(browser: Browser): Promise<BrowserContext> {
   const cookies = parseLinkedInCookies(fullCookieString, liAt, csrfToken);
   if (cookies.length > 0) await _context.addCookies(cookies);
 
-  await _context.addInitScript(() => {
-    Object.defineProperty((globalThis as any).navigator, 'webdriver', { get: () => undefined });
-    (globalThis as any).chrome = { runtime: {} };
-  });
-
   return _context;
 }
 
 // Open a new Page from the shared context. Returns a pseudo-ctx whose close()
 // only closes the page — callers use the same try/finally { ctx.close() }
 // pattern but the shared context stays alive.
+//
+// If the shared context or browser has died (crash, OOM, etc.) since the last
+// action, the singleton references become stale and context.newPage() throws
+// "Target page, context or browser has been closed". We detect that here,
+// reset both singletons, and re-launch fresh so the caller gets a working page
+// without having to know anything about the crash.
 async function newAuthenticatedPage(browser: Browser): Promise<{ page: Page; ctx: { close: () => Promise<void> } }> {
-  const context = await getOrCreateContext(browser);
-  const page = await context.newPage();
+  let context = await getOrCreateContext(browser);
+  let page: Page;
+
+  try {
+    page = await context.newPage();
+  } catch (err: any) {
+    if (err.message?.includes('closed') || err.message?.includes('Target page')) {
+      logger.warn('  Shared context/browser died — resetting and re-launching...');
+      if (_context) { await _context.close().catch(() => {}); _context = null; }
+      if (_browser) { await _browser.close().catch(() => {}); _browser = null; }
+
+      const freshBrowser = await getOrLaunchBrowser();
+      context = await getOrCreateContext(freshBrowser);
+      page = await context.newPage();
+    } else {
+      throw err;
+    }
+  }
+
   return { page, ctx: { close: async () => { await page.close().catch(() => {}); } } };
 }
 
@@ -142,13 +192,11 @@ async function newAuthenticatedPage(browser: Browser): Promise<{ page: Page; ctx
 export async function getLinkedInBrowser(): Promise<Browser> {
   const browser = await getOrLaunchBrowser();
 
-  logger.info('🔄 Validating LinkedIn session...');
+  logger.info('🔄 Validating LinkedIn session and warming routing cookies...');
   const { page, ctx } = await newAuthenticatedPage(browser);
   try {
-    await page.goto('https://www.linkedin.com/feed/', {
-      waitUntil: 'domcontentloaded',
-      timeout: 25000,
-    });
+    // Use gotoWithRetry so lidc redirect loops are auto-recovered
+    await gotoWithRetry(page, 'https://www.linkedin.com/feed/');
     const url = page.url();
     if (url.includes('/login') || url.includes('/authwall') || url.includes('/checkpoint') || url.includes('/uas/')) {
       throw new Error(
@@ -157,9 +205,10 @@ export async function getLinkedInBrowser(): Promise<Browser> {
         'Also copy the full Cookie header from DevTools → Network → any feed request → update LINKEDIN_FULL_COOKIE_STRING.'
       );
     }
-    logger.info('✅ Session valid (feed loaded)');
+    await humanDelay(2000, 3000);
+    logger.info('✅ Session valid — routing cookies warmed');
   } finally {
-    await ctx.close(); // closes just the page; context stays alive
+    await ctx.close(); // closes just the page; context stays alive with all fresh cookies
   }
 
   return browser;
@@ -251,26 +300,83 @@ async function isLoggedIn(page: Page): Promise<boolean> {
   return loggedIn;
 }
 
-// Navigate with retry on auth failure or redirect loops.
-// If the target URL triggers ERR_TOO_MANY_REDIRECTS (LinkedIn's CDN/locale
-// routing loop), warm up on the feed first — it's always reachable and the
-// navigation sets the correct lidc/lang cookies, allowing the target to load.
-// Navigate with warm-up + retry.
-// A brand-new page (about:blank) that jumps straight to a deep profile URL
-// triggers ERR_TOO_MANY_REDIRECTS because LinkedIn hasn't yet set its CDN /
-// locale routing cookies for this page. Visiting the feed first lets LinkedIn
-// set those cookies, after which the target URL loads cleanly.
+// Navigate with warm-up + redirect-loop recovery.
+//
+// Fresh pages always warm up on the feed first so LinkedIn's routing cookies
+// (lidc, JSESSIONID etc.) are set before navigating to a deep profile URL.
+//
+// When a redirect loop is detected, we listen to intermediate 302 responses to
+// capture a fresh lidc from LinkedIn's Set-Cookie header, apply it to the context,
+// then retry. This avoids the need for frequent manual cookie refreshes.
 async function gotoWithRetry(page: Page, url: string): Promise<void> {
   const normalised = url.replace(/^https?:\/\/[a-z]{2,3}\.linkedin\.com\//, 'https://www.linkedin.com/');
 
-  // Proactive warm-up: only for new (blank) pages navigating to non-feed URLs
-  if (page.url() === 'about:blank' && !normalised.includes('/feed/')) {
+  // Warm up on feed for any fresh (non-LinkedIn) page
+  const currentUrl = page.url();
+  const needsWarmup = !currentUrl.includes('linkedin.com') || currentUrl === 'about:blank';
+
+  if (needsWarmup && !normalised.includes('/feed/')) {
     logger.info('  Warming up on feed before profile navigation...');
-    await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await humanDelay(1500, 2500);
+    await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await humanDelay(2000, 3500);
   }
 
-  await page.goto(normalised, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  // Capture fresh lidc from any 302 redirect responses LinkedIn sends during navigation.
+  // LinkedIn issues a new lidc in Set-Cookie during the redirect chain — we capture it
+  // so we can apply it and retry if the initial navigation loops.
+  let capturedLidc: string | null = null;
+  const responseHandler = (response: import('playwright').Response) => {
+    const status = response.status();
+    if (status < 300 || status >= 400) return;
+    if (!response.url().includes('linkedin.com')) return;
+    const headers = response.headers();
+    const location = headers['location'] ?? '(no location)';
+    const setCookie = headers['set-cookie'] ?? '';
+    logger.info(`  [redirect ${status}] from: ${response.url()} → ${location}`);
+    if (setCookie) logger.info(`  [set-cookie] ${setCookie.substring(0, 200)}`);
+    if (setCookie.includes('lidc=')) {
+      const match = setCookie.match(/lidc=("[^"]*"|[^;,\s]*)/);
+      if (match) {
+        capturedLidc = match[1];
+        logger.info(`  Captured fresh lidc from redirect (t=${capturedLidc.match(/t=(\d+)/)?.[1] ?? '?'})`);
+      }
+    }
+  };
+  page.on('response', responseHandler);
+
+  try {
+    await page.goto(normalised, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  } catch (err: any) {
+    if (err.message?.includes('ERR_TOO_MANY_REDIRECTS') || err.message?.includes('interrupted by another navigation')) {
+      page.off('response', responseHandler);
+
+      if (capturedLidc && _context) {
+        // LinkedIn gave us a fresh lidc in the redirect chain — apply it and retry
+        logger.info('  Applying captured fresh lidc and retrying...');
+        await _context.addCookies([{
+          name: 'lidc', value: capturedLidc,
+          domain: '.linkedin.com', path: '/',
+          secure: true, httpOnly: false, sameSite: 'None' as const,
+        }]);
+        await page.goto('about:blank', { waitUntil: 'domcontentloaded', timeout: 8000 }).catch(() => {});
+        await humanDelay(1500, 2500);
+        await page.goto(normalised, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      } else {
+        // No fresh lidc captured — fall back to re-warming feed and retrying once
+        logger.info('  Redirect loop — no fresh lidc captured; re-warming feed and retrying...');
+        await page.goto('about:blank', { waitUntil: 'domcontentloaded', timeout: 8000 }).catch(() => {});
+        await humanDelay(1500, 2500);
+        await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 25000 });
+        await humanDelay(3000, 5000);
+        await page.goto(normalised, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      }
+    } else {
+      page.off('response', responseHandler);
+      throw err;
+    }
+  }
+
+  page.off('response', responseHandler);
 
   if (!await isLoggedIn(page)) {
     logger.info('  Retrying navigation after 10s...');
@@ -850,6 +956,122 @@ export async function browserCommentOnPost(
   } catch (err: any) {
     logger.error(`Comment failed for ${postUrl}: ${err.message}`);
     return false;
+  } finally {
+    await ctx.close();
+  }
+}
+
+// ─── READ LINKEDIN INBOX ──────────────────────────────────────────────────────
+// Voyager API is blocked server-side for reads. This uses the browser instead.
+// Returns up to maxConversations recent conversations with the latest message text.
+
+export interface InboxConversation {
+  participantName: string;
+  participantProfileUrl: string;
+  latestMessage: string;
+  isUnread: boolean;
+  timestamp: string;
+}
+
+export async function browserReadInbox(
+  browser: Browser,
+  maxConversations = 20
+): Promise<InboxConversation[]> {
+  const { page, ctx } = await newAuthenticatedPage(browser);
+  const conversations: InboxConversation[] = [];
+
+  try {
+    logger.info('📬 Opening LinkedIn inbox...');
+    await page.goto('https://www.linkedin.com/messaging/', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
+    await humanDelay(3000, 5000);
+
+    if (!await isLoggedIn(page)) {
+      logger.warn('LinkedIn session expired — refresh LINKEDIN_LI_AT_COOKIE in .env');
+      return [];
+    }
+
+    // Wait for conversation list to load
+    await page.waitForSelector(
+      '.msg-conversations-container__conversations-list, .msg-overlay-list-bubble, [data-control-name="overlay.open_conversation"]',
+      { timeout: 12000 }
+    ).catch(() => {});
+
+    await humanDelay(2000, 3000);
+
+    // Each conversation item in the sidebar
+    const convItems = page.locator(
+      '.msg-conversation-listitem, .msg-conversations-container__conversations-list > li'
+    );
+    const count = await convItems.count().catch(() => 0);
+    logger.info(`  Found ${count} conversations`);
+
+    const limit = Math.min(count, maxConversations);
+
+    for (let i = 0; i < limit; i++) {
+      try {
+        const item = convItems.nth(i);
+
+        // Is this conversation unread?
+        const isUnread = await item.locator(
+          '.msg-conversation-listitem__unread-count, [data-control-name="unread_indicator"]'
+        ).isVisible({ timeout: 500 }).catch(() => false);
+
+        // Participant name
+        const nameEl = item.locator(
+          '.msg-conversation-listitem__participant-names, .msg-conversation-card__participant-names'
+        ).first();
+        const participantName = ((await nameEl.textContent().catch(() => '')) ?? '').trim() || 'Unknown';
+
+        // Latest message preview
+        const previewEl = item.locator(
+          '.msg-conversation-listitem__message-snippet, .msg-conversation-card__message-snippet-body'
+        ).first();
+        const latestMessage = ((await previewEl.textContent().catch(() => '')) ?? '').trim();
+
+        // Timestamp
+        const timeEl = item.locator(
+          'time, .msg-conversation-listitem__time-stamp'
+        ).first();
+        const timestamp = (await timeEl.getAttribute('datetime').catch(() => ''))
+          ?? ((await timeEl.textContent().catch(() => '')) ?? '').trim();
+
+        // Click to get profile URL
+        await item.click({ force: true }).catch(() => {});
+        await humanDelay(1200, 2000);
+
+        // Try to find the profile link in the open conversation
+        const profileLink = await page.locator(
+          '.msg-thread__link-to-profile, .msg-s-message-group__profile-link, a[href*="/in/"]'
+        ).first().getAttribute('href').catch(() => null);
+
+        const participantProfileUrl = profileLink
+          ? `https://www.linkedin.com${profileLink.split('?')[0]}`
+          : '';
+
+        conversations.push({
+          participantName,
+          participantProfileUrl,
+          latestMessage,
+          isUnread,
+          timestamp,
+        });
+
+        logger.info(`  [${i + 1}/${limit}] ${participantName}${isUnread ? ' (UNREAD)' : ''}: "${latestMessage.substring(0, 60)}"`);
+      } catch {
+        // Silently skip malformed items
+      }
+    }
+
+    await page.screenshot({ path: 'src/scripts/screenshots/linkedin-inbox.png' });
+    logger.info(`✅ Inbox read: ${conversations.length} conversations`);
+    return conversations;
+
+  } catch (err: any) {
+    logger.error(`Inbox read failed: ${err.message}`);
+    return conversations;
   } finally {
     await ctx.close();
   }

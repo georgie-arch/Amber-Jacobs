@@ -273,13 +273,22 @@ export async function getLinkedInUnreadMessages(): Promise<any[]> {
     return [];
   }
 
+  // Voyager API is blocked server-side — use browser-based inbox reader instead
   try {
-    const response = await axios.get(
-      'https://www.linkedin.com/voyager/api/messaging/conversations?keyVersion=LEGACY_INBOX&q=unread',
-      { headers: voyagerHeaders() }
-    );
-
-    return response.data?.elements || [];
+    const { getLinkedInBrowser, browserReadInbox } = await import('./linkedin-browser');
+    const browser = await getLinkedInBrowser();
+    const conversations = await browserReadInbox(browser, 30);
+    return conversations
+      .filter(c => c.isUnread)
+      .map(c => ({
+        participantName: c.participantName,
+        participantProfileUrl: c.participantProfileUrl,
+        latestMessage: c.latestMessage,
+        timestamp: c.timestamp,
+        // Legacy Voyager field shim so existing callers don't break
+        events: [{ eventContent: { messageBody: { text: c.latestMessage } } }],
+        participants: [{ name: c.participantName, entityUrn: c.participantProfileUrl }],
+      }));
   } catch (error) {
     logger.error('Error fetching LinkedIn messages:', error);
     return [];

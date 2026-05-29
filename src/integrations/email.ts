@@ -36,18 +36,20 @@ async function getOutlookAccessToken(): Promise<string> {
 export async function sendEmailViaGraph(
   to: string,
   subject: string,
-  body: string
+  body: string,
+  opts?: { fromName?: string; fromAddress?: string }
 ): Promise<boolean> {
   try {
     const accessToken = await getOutlookAccessToken();
-    const sender = process.env.EMAIL_USER || '';
+    const sender = opts?.fromAddress || process.env.EMAIL_USER || '';
+    const senderName = opts?.fromName || process.env.AMBER_NAME || 'Amber Jacobs';
     const logoB64 = getLogoBase64();
 
     const message: any = {
       subject,
-      body: { contentType: 'HTML', content: formatEmailHtml(body) },
+      body: { contentType: 'HTML', content: formatEmailHtml(body, senderName, sender) },
       toRecipients: [{ emailAddress: { address: to } }],
-      from: { emailAddress: { address: sender, name: process.env.AMBER_NAME || 'Amber Jacobs' } }
+      from: { emailAddress: { address: sender, name: senderName } }
     };
 
     if (logoB64) {
@@ -106,32 +108,68 @@ function senderAddress(): string {
     : (process.env.GMAIL_USER || '');
 }
 
-// ─── SEND EMAIL ─────────────────────────────────────────────────
+// ─── SEND EMAIL (with optional from override) ────────────────────
+// Supports sending from any verified Gmail "Send mail as" alias.
+// Pass fromAddress + fromName to override the default sender.
+
+export async function sendEmailFrom(
+  to: string,
+  subject: string,
+  body: string,
+  fromAddress: string,
+  fromName: string,
+  replyTo?: string
+): Promise<boolean> {
+  const provider = process.env.EMAIL_PROVIDER || 'gmail';
+
+  if (provider === 'outlook') {
+    return sendEmailViaGraph(to, subject, body, { fromAddress, fromName });
+  }
+
+  try {
+    const transport = await createEmailTransport();
+    await transport.sendMail({
+      from: `"${fromName}" <${fromAddress}>`,
+      to,
+      subject,
+      text: body,
+      html: formatEmailHtml(body, fromName, fromAddress),
+      replyTo: replyTo || fromAddress,
+    });
+    logger.info(`✉️  Email sent from ${fromAddress} to ${to}: ${subject}`);
+    return true;
+  } catch (error) {
+    logger.error('Email send failed:', error);
+    return false;
+  }
+}
 
 export async function sendEmail(
   to: string,
   subject: string,
   body: string,
-  replyTo?: string
+  replyTo?: string,
+  opts?: { fromName?: string; fromAddress?: string }
 ): Promise<boolean> {
   const provider = process.env.EMAIL_PROVIDER || 'gmail';
 
   // Microsoft 365 — use Graph API (SMTP auth is disabled by default)
   if (provider === 'outlook') {
-    return sendEmailViaGraph(to, subject, body);
+    return sendEmailViaGraph(to, subject, body, opts);
   }
 
   // Gmail — use nodemailer OAuth2
   try {
     const transport = await createEmailTransport();
-    const from = senderAddress();
+    const from = opts?.fromAddress || senderAddress();
+    const fromName = opts?.fromName || process.env.AMBER_NAME || 'Amber Jacobs';
 
     await transport.sendMail({
-      from: `"${process.env.AMBER_NAME || 'Amber Jacobs'}" <${from}>`,
+      from: `"${fromName}" <${from}>`,
       to,
       subject,
       text: body,
-      html: formatEmailHtml(body),
+      html: formatEmailHtml(body, fromName, from),
       replyTo: replyTo || from
     });
 
@@ -233,6 +271,10 @@ async function readUnrepliedEmailsOutlook(agent: AmberAgent): Promise<void> {
       // Skip bulk/automated/marketing mail — only process genuine human replies
       if (isAutomatedEmail(fromEmail, msg)) continue;
 
+      // DEPT Agency — always route to George before replying
+      const fromDomain = fromEmail.split('@')[1] || '';
+      const isDeptAgency = ['dept.com', 'deptagency.com'].some(d => fromDomain.includes(d));
+
       const subject: string = msg.subject || '(no subject)';
       const bodyContent: string = stripHtml(msg.body?.content || '');
       const conversationId: string = msg.conversationId || msg.id;
@@ -261,11 +303,15 @@ async function readUnrepliedEmailsOutlook(agent: AmberAgent): Promise<void> {
       });
 
       if (amberResponse) {
-        if (!amberResponse.requires_approval) {
+        // DEPT Agency replies always need George's sign-off
+        if (!amberResponse.requires_approval && !isDeptAgency) {
           // Reply in-thread via Graph API
           await replyOutlookInThread(accessToken, msg.id, amberResponse.message);
           logger.info(`✅ Replied to ${fromEmail} in thread`);
         } else {
+          if (isDeptAgency) {
+            amberResponse.tone_notes = `[DEPT Agency — requires George's approval before sending] ${amberResponse.tone_notes || ''}`;
+          }
           await notifyGeorgeForApproval(amberResponse, fromEmail);
         }
       }
@@ -357,6 +403,10 @@ async function replyOutlookInThread(
 // Detect automated / marketing / bulk emails that Amber should ignore
 function isAutomatedEmail(fromEmail: string, msg: any): boolean {
   const email = fromEmail.toLowerCase();
+  const domain = email.split('@')[1] || '';
+
+  // Nas.io — service we use, sends frequent promo emails. Never reply.
+  if (domain.includes('nas.io')) return true;
 
   // No-reply / donotreply senders
   const automatedPatterns = [
@@ -561,11 +611,15 @@ function getLogoBase64(): string {
   }
 }
 
-function formatEmailHtml(text: string): string {
+function formatEmailHtml(text: string, senderName?: string, senderEmail?: string): string {
   const logo = getLogoBase64();
   const logoHtml = logo
     ? `<img src="cid:indvstry-logo" alt="Indvstry Clvb" width="180" style="display:block;margin-bottom:12px;" />`
     : '';
+
+  const name = senderName || process.env.AMBER_NAME || 'Amber Jacobs';
+  const isGeorge = name.toLowerCase().includes('george');
+  const roleLabel = isGeorge ? 'Founder, Indvstry Clvb' : 'Community Manager, Indvstry Clvb';
 
   return `<!DOCTYPE html>
 <html>
@@ -575,8 +629,8 @@ function formatEmailHtml(text: string): string {
 <body style="font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;max-width:600px;margin:0 auto;padding:32px 20px;line-height:1.6;">
   <div>${text.replace(/\n/g, '<br>')}</div>
   <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e0e0e0;">
-    <p style="margin:0 0 2px 0;font-size:16px;font-weight:bold;">${process.env.AMBER_NAME || 'Amber Jacobs'}</p>
-    <p style="margin:0 0 14px 0;font-size:13px;color:#555;">Indvstry Clvb, Community Manager</p>
+    <p style="margin:0 0 2px 0;font-size:16px;font-weight:bold;">${name}</p>
+    <p style="margin:0 0 14px 0;font-size:13px;color:#555;">${roleLabel}</p>
     ${logoHtml}
     <p style="margin:0 0 4px 0;">+44 7438 932403</p>
     <p style="margin:0 0 4px 0;">London, UK</p>
